@@ -1,0 +1,358 @@
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { NutritionService } from '../../core/services/nutrition.service';
+import { ToastService } from '../../core/services/toast.service';
+import { Meal, MealType } from '../../core/models/nutrition.models';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+
+@Component({
+  selector: 'app-nutrition',
+  imports: [IconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="space-y-6 pb-6 animate-fade-in">
+      <!-- Header matching Figma Food screen -->
+      <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <span class="text-xs font-semibold text-[#FF5722] uppercase tracking-wider">Nutrition & Macros</span>
+          <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">Food & Diet</h1>
+          <p class="text-xs text-slate-400 mt-1">
+            Fuel your metabolism and muscular recovery with nutrient-dense meals.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="addWater()"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-bold hover:bg-sky-500/25 transition-colors self-start sm:self-auto"
+        >
+          <app-icon name="droplet" size="16"/>
+          <span>+250ml Water ({{ nutritionService.dailyTracker().waterConsumedMl }}ml)</span>
+        </button>
+      </section>
+
+      <!-- Calorie & Macro Target Card (Figma Food calorie banner) -->
+      <section class="p-6 rounded-3xl bg-gradient-to-br from-[#161624] to-[#101018] border border-white/5 shadow-2xl">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+          <!-- Calorie Circular / Progress Display -->
+          <div class="text-center md:text-left">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">Calories Remaining</span>
+            <div class="text-4xl sm:text-5xl font-black text-white tracking-tight">
+              {{ nutritionService.remainingCalories() }}
+              <span class="text-lg font-bold text-[#FF5722]">kcal</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Consumed: <span class="text-white font-semibold">{{ nutritionService.dailyTracker().caloriesConsumed }}</span> / {{ nutritionService.dailyTracker().calorieTarget }} kcal
+            </p>
+          </div>
+
+          <!-- Macros Progress Bars -->
+          <div class="md:col-span-2 space-y-3.5">
+            <!-- Protein -->
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300">Protein (Muscle Recovery)</span>
+                <span class="text-emerald-400 font-bold">
+                  {{ nutritionService.dailyTracker().proteinConsumed }}g / {{ nutritionService.dailyTracker().proteinTarget }}g
+                </span>
+              </div>
+              <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  class="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  [style.width.%]="(nutritionService.dailyTracker().proteinConsumed / nutritionService.dailyTracker().proteinTarget) * 100"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Carbohydrates -->
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300">Carbs (Glycogen Energy)</span>
+                <span class="text-amber-400 font-bold">
+                  {{ nutritionService.dailyTracker().carbsConsumed }}g / {{ nutritionService.dailyTracker().carbsTarget }}g
+                </span>
+              </div>
+              <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  class="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  [style.width.%]="(nutritionService.dailyTracker().carbsConsumed / nutritionService.dailyTracker().carbsTarget) * 100"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Healthy Fats -->
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300">Healthy Fats (Hormone Support)</span>
+                <span class="text-rose-400 font-bold">
+                  {{ nutritionService.dailyTracker().fatConsumed }}g / {{ nutritionService.dailyTracker().fatTarget }}g
+                </span>
+              </div>
+              <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  class="h-full bg-rose-500 rounded-full transition-all duration-500"
+                  [style.width.%]="(nutritionService.dailyTracker().fatConsumed / nutritionService.dailyTracker().fatTarget) * 100"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Meal Category Tabs (Breakfast, Lunch, Dinner, Snack) -->
+      <section>
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          @for (tab of mealTabs; track tab.value) {
+            <button
+              type="button"
+              (click)="selectedMealTab.set(tab.value)"
+              class="px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all uppercase tracking-wider"
+              [class.bg-[#FF5722]]="selectedMealTab() === tab.value"
+              [class.text-white]="selectedMealTab() === tab.value"
+              [class.glow-orange-sm]="selectedMealTab() === tab.value"
+              [class.bg-[#161622]]="selectedMealTab() !== tab.value"
+              [class.text-slate-400]="selectedMealTab() !== tab.value"
+              [class.border]="selectedMealTab() !== tab.value"
+              [class.border-white/5]="selectedMealTab() !== tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Recommended Meals Grid (Figma food cards) -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-white uppercase tracking-wider">Recommended Recipes</h2>
+          <span class="text-xs text-slate-500 font-semibold">{{ filteredMeals().length }} Healthy Choices</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (meal of filteredMeals(); track meal.mealId) {
+            <div class="rounded-3xl bg-[#161622] border border-white/5 overflow-hidden hover:border-[#FF5722]/50 transition-all duration-300 group flex flex-col justify-between shadow-xl">
+              <div>
+                <div class="h-44 relative overflow-hidden">
+                  <img
+                    [src]="meal.imageUrl"
+                    [alt]="meal.name"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-[#161622] via-[#161622]/30 to-transparent"></div>
+
+                  <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-[#FF5722] uppercase tracking-wider border border-white/10">
+                    {{ meal.type }}
+                  </span>
+
+                  <span class="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
+                    {{ meal.prepTimeMinutes }} mins
+                  </span>
+                </div>
+
+                <div class="p-4">
+                  <h3 class="text-base font-bold text-white mb-2 group-hover:text-[#FF5722] transition-colors line-clamp-1">
+                    {{ meal.name }}
+                  </h3>
+
+                  <!-- Macro Pills -->
+                  <div class="flex items-center gap-2 text-xs mb-3">
+                    <span class="px-2 py-0.5 rounded-lg bg-orange-500/10 text-[#FF5722] font-bold">
+                      {{ meal.calories }} kcal
+                    </span>
+                    <span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-semibold">
+                      {{ meal.protein }}g Protein
+                    </span>
+                    <span class="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 font-semibold">
+                      {{ meal.carbs }}g Carbs
+                    </span>
+                  </div>
+
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1.5 mb-2">
+                    @for (tag of meal.tags; track tag) {
+                      <span class="text-[10px] px-2 py-0.5 rounded-md bg-white/5 text-slate-400">
+                        {{ tag }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="p-4 pt-0 border-t border-white/5 mt-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="openMealDetails(meal)"
+                  class="flex-1 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-xs transition-colors"
+                >
+                  View Recipe
+                </button>
+                <button
+                  type="button"
+                  (click)="logMeal(meal)"
+                  class="py-2.5 px-3 rounded-xl bg-[#FF5722] hover:bg-[#F4511E] text-white font-bold text-xs transition-colors shadow-md shadow-[#FF5722]/20 flex items-center gap-1"
+                >
+                  <app-icon name="plus" size="14"/>
+                  <span>Log</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Today's Logged Meals History List -->
+      <section class="mt-8">
+        <h3 class="text-base font-bold text-white uppercase tracking-wider mb-3">Today's Logged Meals</h3>
+        <div class="rounded-3xl bg-[#161622] border border-white/5 divide-y divide-white/5 shadow-xl">
+          @for (logged of nutritionService.dailyTracker().loggedMeals; track $index) {
+            <div class="p-4 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#FF5722]">
+                  <app-icon name="utensils" size="18"/>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">{{ logged.name }}</h4>
+                  <span class="text-[10px] text-slate-400">{{ logged.type }} • Logged at {{ logged.loggedAt }}</span>
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-xs font-bold text-[#FF5722]">{{ logged.calories }} kcal</span>
+                <span class="text-[10px] text-slate-400 block">{{ logged.protein }}g protein</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Meal Details Recipe Modal (Figma Details... frame) -->
+      @if (activeMealModal(); as meal) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="relative w-full max-w-lg rounded-3xl bg-[#161622] border border-white/10 overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <!-- Close Button -->
+            <button
+              type="button"
+              (click)="closeMealDetails()"
+              class="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-white/10"
+              aria-label="Close modal"
+            >
+              <app-icon name="x" size="16"/>
+            </button>
+
+            <!-- Hero Image -->
+            <div class="h-48 relative shrink-0">
+              <img [src]="meal.imageUrl" [alt]="meal.name" class="w-full h-full object-cover"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-[#161622] via-transparent to-transparent"></div>
+              <span class="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-[#FF5722] text-white text-[11px] font-bold uppercase tracking-wider">
+                {{ meal.type }}
+              </span>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="p-6 overflow-y-auto space-y-5">
+              <div>
+                <h3 class="text-xl font-bold text-white mb-2">{{ meal.name }}</h3>
+                <div class="grid grid-cols-4 gap-2 text-center p-3 rounded-2xl bg-white/5">
+                  <div>
+                    <span class="text-[10px] text-slate-400 block">Calories</span>
+                    <span class="text-sm font-black text-[#FF5722]">{{ meal.calories }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block">Protein</span>
+                    <span class="text-sm font-black text-emerald-400">{{ meal.protein }}g</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block">Carbs</span>
+                    <span class="text-sm font-black text-amber-400">{{ meal.carbs }}g</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block">Fats</span>
+                    <span class="text-sm font-black text-rose-400">{{ meal.fat }}g</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ingredients -->
+              <div>
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2">Ingredients</h4>
+                <ul class="space-y-1.5 text-xs text-slate-300 list-disc list-inside">
+                  @for (ing of meal.ingredients; track ing) {
+                    <li>{{ ing }}</li>
+                  }
+                </ul>
+              </div>
+
+              <!-- Preparation Steps -->
+              <div>
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2">Preparation Instructions</h4>
+                <ol class="space-y-2 text-xs text-slate-300 list-decimal list-inside leading-relaxed">
+                  @for (step of meal.instructions; track step) {
+                    <li>{{ step }}</li>
+                  }
+                </ol>
+              </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-white/5 bg-[#14141E] shrink-0">
+              <button
+                type="button"
+                (click)="logMealAndClose(meal)"
+                class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider hover:opacity-95 shadow-lg shadow-[#FF5722]/30 flex items-center justify-center gap-2"
+              >
+                <app-icon name="plus" size="16"/>
+                <span>Log to Today's Meals</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  `
+})
+export class NutritionComponent {
+  nutritionService = inject(NutritionService);
+  private toastService = inject(ToastService);
+
+  selectedMealTab = signal<string>('all');
+  activeMealModal = signal<Meal | null>(null);
+
+  mealTabs = [
+    { value: 'all', label: 'All Recipes' },
+    { value: MealType.Breakfast, label: 'Breakfast' },
+    { value: MealType.Lunch, label: 'Lunch' },
+    { value: MealType.Dinner, label: 'Dinner' },
+    { value: MealType.Snack, label: 'Snacks & Shakes' }
+  ];
+
+  filteredMeals = computed(() => {
+    return this.nutritionService.getMealsByType(this.selectedMealTab());
+  });
+
+  openMealDetails(meal: Meal): void {
+    this.activeMealModal.set(meal);
+  }
+
+  closeMealDetails(): void {
+    this.activeMealModal.set(null);
+  }
+
+  logMeal(meal: Meal): void {
+    this.nutritionService.logMeal(meal);
+    this.toastService.success(`Logged ${meal.name} (+${meal.calories} kcal)`, 'Meal Logged');
+  }
+
+  logMealAndClose(meal: Meal): void {
+    this.logMeal(meal);
+    this.closeMealDetails();
+  }
+
+  addWater(): void {
+    this.nutritionService.addWater(250);
+    this.toastService.success('Added 250ml water intake!', 'Hydration');
+  }
+}

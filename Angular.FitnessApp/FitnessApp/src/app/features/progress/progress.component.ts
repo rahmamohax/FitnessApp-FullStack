@@ -1,0 +1,259 @@
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ProgressService } from '../../core/services/progress.service';
+import { ToastService } from '../../core/services/toast.service';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+
+@Component({
+  selector: 'app-progress',
+  imports: [FormsModule, IconComponent, DecimalPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="space-y-6 pb-6 animate-fade-in">
+      <!-- Header -->
+      <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <span class="text-xs font-semibold text-[#FF5722] uppercase tracking-wider">Analytics & History</span>
+          <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">Your Progress</h1>
+          <p class="text-xs text-slate-400 mt-1">
+            Track metrics evolution, consistent workout streaks, and unlocked badges.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="openWeightModal.set(true)"
+          class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider hover:opacity-95 shadow-lg shadow-[#FF5722]/30 transition-all self-start sm:self-auto"
+        >
+          <app-icon name="plus" size="16"/>
+          <span>Log Weight Entry</span>
+        </button>
+      </section>
+
+      <!-- All-Time Stats Cards -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="p-4 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-400">Total Workouts</span>
+            <div class="w-8 h-8 rounded-xl bg-orange-500/15 text-[#FF5722] flex items-center justify-center">
+              <app-icon name="dumbbell" size="16"/>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-white">{{ progressService.stats().totalWorkouts }}</div>
+          <span class="text-[11px] text-emerald-400 mt-1 block">Completed sessions</span>
+        </div>
+
+        <div class="p-4 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-400">Calories Burned</span>
+            <div class="w-8 h-8 rounded-xl bg-red-500/15 text-red-400 flex items-center justify-center">
+              <app-icon name="flame" size="16"/>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-white">{{ progressService.stats().totalCaloriesBurned }} <span class="text-xs text-slate-400 font-semibold">kcal</span></div>
+          <span class="text-[11px] text-slate-400 mt-1 block">Total energy burned</span>
+        </div>
+
+        <div class="p-4 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-400">Training Time</span>
+            <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+              <app-icon name="clock" size="16"/>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-white">{{ (progressService.stats().totalMinutesTrained / 60) | number:'1.1-1' }} <span class="text-xs text-slate-400 font-semibold">hrs</span></div>
+          <span class="text-[11px] text-slate-400 mt-1 block">{{ progressService.stats().totalMinutesTrained }} total minutes</span>
+        </div>
+
+        <div class="p-4 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-400">Weight Difference</span>
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <app-icon name="activity" size="16"/>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-white">-{{ progressService.stats().weightLostKg }} <span class="text-xs text-slate-400 font-semibold">kg</span></div>
+          <span class="text-[11px] text-emerald-400 mt-1 block">Towards target weight</span>
+        </div>
+      </section>
+
+      <!-- Weight History Timeline -->
+      <section class="p-6 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white uppercase tracking-wider">Weight Log History</h2>
+            <p class="text-xs text-slate-400">Recorded weigh-in checkpoints</p>
+          </div>
+          <span class="text-xs text-slate-400 font-semibold">{{ progressService.weightHistory().length }} Checkpoints</span>
+        </div>
+
+        <div class="space-y-2.5">
+          @for (entry of progressService.weightHistory(); track entry.id) {
+            <div class="p-3.5 rounded-2xl bg-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#FF5722]/15 text-[#FF5722] flex items-center justify-center font-bold text-xs">
+                  ⚖️
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">{{ entry.date }}</h4>
+                  <span class="text-[11px] text-slate-400">{{ entry.notes || 'Routine check-in' }}</span>
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-base font-black text-white">{{ entry.weight }} kg</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Achievements & Badges Grid -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white uppercase tracking-wider">Earned Achievements</h2>
+            <p class="text-xs text-slate-400">Milestones achieved along your fitness progression</p>
+          </div>
+          <span class="text-xs font-bold text-[#FF5722]">
+            {{ unlockedAchievementsCount() }} / {{ progressService.achievements().length }} Unlocked
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (ach of progressService.achievements(); track ach.id) {
+            <div
+              class="p-5 rounded-3xl border transition-all flex items-start gap-3.5"
+              [class.bg-[#161622]]="ach.isUnlocked"
+              [class.border-white/10]="ach.isUnlocked"
+              [class.bg-[#12121A]/70]="!ach.isUnlocked"
+              [class.border-white/5]="!ach.isUnlocked"
+              [class.opacity-60]="!ach.isUnlocked"
+            >
+              <div
+                class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                [class.bg-[#FF5722]/20]="ach.isUnlocked"
+                [class.text-[#FF5722]]="ach.isUnlocked"
+                [class.bg-white/5]="!ach.isUnlocked"
+                [class.text-slate-600]="!ach.isUnlocked"
+              >
+                @switch (ach.icon) {
+                  @case ('fire') { 🔥 }
+                  @case ('trophy') { 🏆 }
+                  @case ('zap') { ⚡ }
+                  @case ('dumbbell') { 🏋️ }
+                  @case ('droplet') { 💧 }
+                  @default { ⭐ }
+                }
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                  <h3 class="text-sm font-bold text-white truncate">{{ ach.title }}</h3>
+                  @if (ach.isUnlocked) {
+                    <span class="text-[10px] text-emerald-400 font-semibold">Unlocked</span>
+                  } @else {
+                    <span class="text-[10px] text-slate-500 font-semibold">{{ ach.progressPercent }}%</span>
+                  }
+                </div>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">{{ ach.description }}</p>
+
+                @if (!ach.isUnlocked) {
+                  <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div class="h-full bg-[#FF5722] rounded-full" [style.width.%]="ach.progressPercent"></div>
+                  </div>
+                } @else if (ach.unlockedAt) {
+                  <span class="text-[10px] text-slate-500">Unlocked {{ ach.unlockedAt }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Log Weight Modal -->
+      @if (openWeightModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div class="relative w-full max-w-sm rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl">
+            <button
+              type="button"
+              (click)="openWeightModal.set(false)"
+              class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+              aria-label="Close modal"
+            >
+              <app-icon name="x" size="18"/>
+            </button>
+
+            <h3 class="text-xl font-bold text-white mb-1">Log Weight</h3>
+            <p class="text-xs text-slate-400 mb-6">Enter today's measured scale weight in kg.</p>
+
+            <div class="space-y-4 mb-6">
+              <div>
+                <label for="modalWeightInput" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Weight (KG)</label>
+                <input
+                  id="modalWeightInput"
+                  type="number"
+                  step="0.1"
+                  [(ngModel)]="newWeight"
+                  class="w-full px-4 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white font-bold text-lg focus:outline-none focus:border-[#FF5722]"
+                />
+              </div>
+
+              <div>
+                <label for="modalNotesInput" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Notes (Optional)</label>
+                <input
+                  id="modalNotesInput"
+                  type="text"
+                  [(ngModel)]="newWeightNotes"
+                  placeholder="e.g. Post morning workout, fasted"
+                  class="w-full px-4 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white text-xs focus:outline-none focus:border-[#FF5722]"
+                />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                (click)="openWeightModal.set(false)"
+                class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                (click)="submitWeight()"
+                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF5722]/30"
+              >
+                Save Weight
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  `
+})
+export class ProgressComponent {
+  progressService = inject(ProgressService);
+  private toastService = inject(ToastService);
+
+  openWeightModal = signal<boolean>(false);
+  newWeight = 82.0;
+  newWeightNotes = 'Weekly check-in';
+
+  unlockedAchievementsCount(): number {
+    return this.progressService.achievements().filter(a => a.isUnlocked).length;
+  }
+
+  submitWeight(): void {
+    if (this.newWeight < 30 || this.newWeight > 300) {
+      this.toastService.error('Please enter a valid weight between 30 and 300 kg.');
+      return;
+    }
+
+    this.progressService.logWeight(this.newWeight, this.newWeightNotes);
+    this.toastService.success(`Logged ${this.newWeight} kg successfully!`, 'Weight Recorded');
+    this.openWeightModal.set(false);
+  }
+}

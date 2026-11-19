@@ -1,0 +1,271 @@
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { IconComponent } from '../icon/icon.component';
+import { AuthService } from '../../../core/services/auth.service';
+import { ProfileService } from '../../../core/services/profile.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ExitModalComponent } from '../exit-modal/exit-modal.component';
+
+@Component({
+  selector: 'app-shell',
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ExitModalComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="min-h-screen bg-[#0D0D12] text-slate-100 flex flex-col md:flex-row">
+      <!-- Desktop Sidebar -->
+      <aside class="hidden md:flex flex-col w-64 bg-[#14141E] border-r border-white/5 p-5 shrink-0 select-none">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-2 py-4 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF5722] to-[#FF8A65] flex items-center justify-center text-white shadow-lg shadow-[#FF5722]/30">
+            <app-icon name="dumbbell" size="22"/>
+          </div>
+          <div>
+            <h1 class="text-base font-extrabold tracking-tight text-white uppercase leading-none">Super Fitness</h1>
+            <span class="text-[10px] font-semibold text-[#FF5722] tracking-wider uppercase">Personal Coach</span>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex-1 space-y-1.5" aria-label="Main Navigation">
+          <a
+            routerLink="/app/home"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            [routerLinkActiveOptions]="{ exact: false }"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+          >
+            <app-icon name="home" size="18"/>
+            <span>Home</span>
+          </a>
+
+          <a
+            routerLink="/app/workouts"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+          >
+            <app-icon name="dumbbell" size="18"/>
+            <span>Workouts & Gym</span>
+          </a>
+
+          <a
+            routerLink="/app/coach"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium relative"
+          >
+            <app-icon name="bot" size="18"/>
+            <span>Smart Coach</span>
+            <span class="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#FF5722]/20 text-[#FF5722] border border-[#FF5722]/30">AI</span>
+          </a>
+
+          <a
+            routerLink="/app/nutrition"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+          >
+            <app-icon name="utensils" size="18"/>
+            <span>Food & Nutrition</span>
+          </a>
+
+          <a
+            routerLink="/app/progress"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+          >
+            <app-icon name="trophy" size="18"/>
+            <span>Progress & Stats</span>
+          </a>
+
+          <a
+            routerLink="/app/profile"
+            routerLinkActive="bg-[#FF5722] text-white shadow-lg shadow-[#FF5722]/25 font-semibold"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+          >
+            <app-icon name="user" size="18"/>
+            <span>Profile & Settings</span>
+          </a>
+        </nav>
+
+        <!-- Sidebar Footer / Exit Trigger -->
+        <div class="pt-4 border-t border-white/5">
+          <button
+            type="button"
+            (click)="isExitModalOpen.set(true)"
+            class="flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-sm font-medium"
+          >
+            <app-icon name="logout" size="18"/>
+            <span>Exit Application</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col min-w-0 pb-20 md:pb-6">
+        <!-- Top Header Bar -->
+        <header class="sticky top-0 z-30 bg-[#0D0D12]/90 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 py-3.5 flex items-center justify-between">
+          <!-- Mobile Brand Logo / Desktop Greeting -->
+          <div class="flex items-center gap-3">
+            <div class="md:hidden flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#FF5722] to-[#FF8A65] flex items-center justify-center text-white">
+                <app-icon name="dumbbell" size="16"/>
+              </div>
+              <span class="text-sm font-bold tracking-tight text-white uppercase">Super Fitness</span>
+            </div>
+            
+            <div class="hidden md:block">
+              <p class="text-xs text-slate-400">Welcome back,</p>
+              <h2 class="text-sm font-bold text-white">{{ profileService.fullName() }}</h2>
+            </div>
+          </div>
+
+          <!-- Top Right Actions -->
+          <div class="flex items-center gap-2.5">
+            <!-- Notifications Bell -->
+            <div class="relative">
+              <button
+                type="button"
+                (click)="toggleNotifications()"
+                class="relative p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+                aria-label="View notifications"
+              >
+                <app-icon name="bell" size="18"/>
+                @if (notificationService.unreadCount() > 0) {
+                  <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#FF5722] ring-2 ring-[#0D0D12]"></span>
+                }
+              </button>
+
+              <!-- Notifications Dropdown -->
+              @if (isNotificationsOpen()) {
+                <div class="absolute right-0 mt-2 w-80 rounded-2xl glass-panel shadow-2xl p-4 z-40 border border-white/10 animate-fade-in">
+                  <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Notifications</h3>
+                    <button
+                      type="button"
+                      (click)="notificationService.markAllAsRead()"
+                      class="text-[11px] text-[#FF5722] hover:underline"
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+
+                  <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    @for (item of notificationService.notifications(); track item.id) {
+                      <div
+                        (click)="notificationService.markAsRead(item.id)"
+                        class="p-2.5 rounded-xl transition-colors cursor-pointer"
+                        [class.bg-white/5]="!item.isRead"
+                        [class.opacity-60]="item.isRead"
+                      >
+                        <div class="flex items-center justify-between gap-1 mb-1">
+                          <h4 class="text-xs font-semibold text-white">{{ item.title }}</h4>
+                          <span class="text-[10px] text-slate-400">{{ item.createdAt }}</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-normal">{{ item.message }}</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Profile Avatar / Button -->
+            <a
+              routerLink="/app/profile"
+              class="flex items-center gap-2.5 p-1 rounded-full hover:bg-white/5 transition-colors"
+            >
+              <div class="w-8 h-8 rounded-full bg-[#FF5722]/20 border border-[#FF5722]/50 text-[#FF5722] flex items-center justify-center font-bold text-xs overflow-hidden">
+                @if (profileService.profile().profilePictureUrl) {
+                  <img [src]="profileService.profile().profilePictureUrl" alt="Avatar" class="w-full h-full object-cover"/>
+                } @else {
+                  <span>{{ profileService.profile().firstName.charAt(0) }}</span>
+                }
+              </div>
+            </a>
+          </div>
+        </header>
+
+        <!-- Nested Content Router -->
+        <main class="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-7xl mx-auto w-full">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+
+      <!-- Mobile Bottom Navigation Bar (Matching Figma bottom bar) -->
+      <nav
+        class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161622]/95 backdrop-blur-xl border-t border-white/10 px-3 py-2 flex items-center justify-around shadow-2xl"
+        aria-label="Mobile Navigation"
+      >
+        <a
+          routerLink="/app/home"
+          routerLinkActive="text-[#FF5722]"
+          [routerLinkActiveOptions]="{ exact: false }"
+          class="flex flex-col items-center gap-1 text-slate-400 hover:text-white p-1 text-[11px] font-medium transition-colors"
+        >
+          <app-icon name="home" size="20"/>
+          <span>Home</span>
+        </a>
+
+        <a
+          routerLink="/app/workouts"
+          routerLinkActive="text-[#FF5722]"
+          class="flex flex-col items-center gap-1 text-slate-400 hover:text-white p-1 text-[11px] font-medium transition-colors"
+        >
+          <app-icon name="dumbbell" size="20"/>
+          <span>Gym</span>
+        </a>
+
+        <!-- Coach Center Highlight Button -->
+        <a
+          routerLink="/app/coach"
+          routerLinkActive="scale-105"
+          class="relative -top-3.5 w-12 h-12 rounded-full bg-gradient-to-tr from-[#FF5722] to-[#FF8A65] flex items-center justify-center text-white shadow-xl shadow-[#FF5722]/40 border-4 border-[#0D0D12] transition-transform"
+          aria-label="Smart AI Coach"
+        >
+          <app-icon name="bot" size="22"/>
+        </a>
+
+        <a
+          routerLink="/app/nutrition"
+          routerLinkActive="text-[#FF5722]"
+          class="flex flex-col items-center gap-1 text-slate-400 hover:text-white p-1 text-[11px] font-medium transition-colors"
+        >
+          <app-icon name="utensils" size="20"/>
+          <span>Food</span>
+        </a>
+
+        <a
+          routerLink="/app/profile"
+          routerLinkActive="text-[#FF5722]"
+          class="flex flex-col items-center gap-1 text-slate-400 hover:text-white p-1 text-[11px] font-medium transition-colors"
+        >
+          <app-icon name="user" size="20"/>
+          <span>Profile</span>
+        </a>
+      </nav>
+
+      <!-- Exit Confirmation Modal (Matching Figma Close Frame) -->
+      @if (isExitModalOpen()) {
+        <app-exit-modal
+          (confirm)="confirmExit()"
+          (cancel)="isExitModalOpen.set(false)"
+        />
+      }
+    </div>
+  `
+})
+export class AppShellComponent {
+  authService = inject(AuthService);
+  profileService = inject(ProfileService);
+  notificationService = inject(NotificationService);
+  private router = inject(Router);
+
+  isExitModalOpen = signal<boolean>(false);
+  isNotificationsOpen = signal<boolean>(false);
+
+  toggleNotifications(): void {
+    this.isNotificationsOpen.update(v => !v);
+  }
+
+  confirmExit(): void {
+    this.isExitModalOpen.set(false);
+    this.authService.logout();
+  }
+}
