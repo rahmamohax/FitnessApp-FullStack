@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { guestGuard } from './core/guard/guest.guard';
+import { authGuard } from './core/guard/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,26 +10,32 @@ export const routes: Routes = [
   },
   {
     path: 'onboarding',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/onboarding/onboarding.component').then(m => m.OnboardingComponent)
   },
   {
     path: 'auth/login',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
   },
   {
     path: 'auth/register',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent)
   },
   {
     path: 'auth/forgot-password',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent)
   },
   {
     path: 'auth/verify-otp',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent)
   },
   {
     path: 'auth/reset-password',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent)
   },
   {
@@ -36,6 +44,7 @@ export const routes: Routes = [
   },
   {
     path: 'app',
+    canActivate: [authGuard],
     loadComponent: () => import('./shared/components/app-shell/app-shell.component').then(m => m.AppShellComponent),
     children: [
       {
