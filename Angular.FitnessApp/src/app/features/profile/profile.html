@@ -1,0 +1,522 @@
+<div class="space-y-6 pb-6 animate-fade-in max-w-4xl mx-auto">
+    <!-- Profile Header matching Figma Profile screen -->
+    <section class="p-6 rounded-3xl bg-[#161622] border border-white/5 shadow-2xl relative overflow-hidden">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div class="flex items-center gap-4">
+        <!-- Avatar with ring and edit icon -->
+        <div class="relative">
+            <div class="w-20 h-20 rounded-full bg-[#FF5722]/20 border-2 border-[#FF5722] text-[#FF5722] flex items-center justify-center text-2xl font-black shadow-xl shadow-[#FF5722]/20">
+            {{ profileService.profile().firstName.charAt(0) }}
+            </div>
+            <button
+            type="button"
+            (click)="openEditInfoModal.set(true)"
+            class="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#FF5722] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+            title="Edit avatar"
+            >
+            <app-icon name="plus" size="14"/>
+            </button>
+        </div>
+
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+            <h1 class="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">
+                {{ profileService.fullName() }}
+            </h1>
+            <span class="px-2.5 py-0.5 rounded-full bg-[#FF5722]/20 border border-[#FF5722]/30 text-[#FF5722] text-[10px] font-bold uppercase">
+                {{ profileService.profile().membershipTier }}
+            </span>
+            </div>
+            <p class="text-xs text-slate-400">{{ profileService.profile().email }}</p>
+            <p class="text-[11px] text-slate-500 mt-1">Joined {{ profileService.profile().joinedDate }}</p>
+        </div>
+        </div>
+
+        <!-- Edit Profile Action Button -->
+        <div class="flex items-center gap-3">
+        <button
+            type="button"
+            (click)="openEditInfoModal.set(true)"
+            class="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors flex items-center gap-2"
+        >
+            <app-icon name="settings" size="14"/>
+            <span>Edit Account</span>
+        </button>
+        <button
+            type="button"
+            (click)="openSubscriptionModal.set(true)"
+            class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white text-xs font-bold uppercase tracking-wider hover:opacity-95 shadow-lg shadow-[#FF5722]/30 transition-all"
+        >
+            Upgrade Tier
+        </button>
+        </div>
+    </div>
+    </section>
+
+    <!-- Key Physical Metrics Grid (Figma weight, goal, activity edit cards) -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <!-- Weight Card with Edit trigger -->
+    <div
+        (click)="openEditWeightModal.set(true)"
+        class="p-4 rounded-3xl bg-[#161622] border border-white/5 hover:border-[#FF5722]/40 transition-all cursor-pointer group shadow-xl"
+    >
+        <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400">Weight</span>
+        <span class="text-[10px] font-bold text-[#FF5722] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+        </div>
+        <div class="text-2xl font-black text-white group-hover:text-[#FF5722] transition-colors">
+        {{ profileService.profile().weight }} <span class="text-xs font-semibold text-slate-400">kg</span>
+        </div>
+        <span class="text-[11px] text-slate-400 mt-1 block">Target: {{ profileService.profile().targetWeight }} kg</span>
+    </div>
+
+    <!-- Height Card -->
+    <div class="p-4 rounded-3xl bg-[#161622] border border-white/5 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400">Height</span>
+        <span class="text-xs text-slate-500">📏</span>
+        </div>
+        <div class="text-2xl font-black text-white">
+        {{ profileService.profile().height }} <span class="text-xs font-semibold text-slate-400">cm</span>
+        </div>
+        <span class="text-[11px] text-slate-400 mt-1 block">BMI: {{ profileService.profile().metrics?.bmi }} ({{ profileService.profile().metrics?.bmiCategory }})</span>
+    </div>
+
+    <!-- Goal Card with Edit trigger -->
+    <div
+        (click)="openEditGoalModal.set(true)"
+        class="p-4 rounded-3xl bg-[#161622] border border-white/5 hover:border-[#FF5722]/40 transition-all cursor-pointer group shadow-xl"
+    >
+        <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400">Fitness Goal</span>
+        <span class="text-[10px] font-bold text-[#FF5722] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+        </div>
+        <div class="text-sm font-bold text-white group-hover:text-[#FF5722] transition-colors line-clamp-1">
+        {{ profileService.profile().goal }}
+        </div>
+        <span class="text-[11px] text-slate-400 mt-1 block">Targeting {{ profileService.profile().metrics?.calorieTarget }} kcal/d</span>
+    </div>
+
+    <!-- Activity Level Card with Edit trigger -->
+    <div
+        (click)="openEditActivityModal.set(true)"
+        class="p-4 rounded-3xl bg-[#161622] border border-white/5 hover:border-[#FF5722]/40 transition-all cursor-pointer group shadow-xl"
+    >
+        <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400">Activity Level</span>
+        <span class="text-[10px] font-bold text-[#FF5722] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+        </div>
+        <div class="text-sm font-bold text-white group-hover:text-[#FF5722] transition-colors">
+        {{ profileService.profile().activityLevel }}
+        </div>
+        <span class="text-[11px] text-slate-400 mt-1 block">BMR: {{ profileService.profile().metrics?.bmr }} kcal</span>
+    </div>
+    </section>
+
+    <!-- App Preferences & Settings -->
+    <section class="rounded-3xl bg-[#161622] border border-white/5 divide-y divide-white/5 shadow-xl">
+    <div class="p-5 flex items-center justify-between">
+        <div>
+        <h3 class="text-sm font-bold text-white">Push Notifications</h3>
+        <p class="text-xs text-slate-400">Daily workout and hydration reminders</p>
+        </div>
+        <input
+        type="checkbox"
+        [checked]="profileService.settings().notificationsEnabled"
+        (change)="toggleSetting('notificationsEnabled')"
+        class="w-5 h-5 rounded bg-[#1C1C28] border-white/20 text-[#FF5722] focus:ring-[#FF5722] cursor-pointer"
+        />
+    </div>
+
+    <div class="p-5 flex items-center justify-between">
+        <div>
+        <h3 class="text-sm font-bold text-white">Measurement Unit</h3>
+        <p class="text-xs text-slate-400">Choose between Metric (kg, cm) and Imperial (lbs, ft)</p>
+        </div>
+        <div class="inline-flex rounded-xl p-1 bg-[#1C1C28] border border-white/10">
+        <button
+            type="button"
+            (click)="changeUnit('metric')"
+            class="px-3 py-1 rounded-lg text-xs font-bold transition-colors"
+            [class.bg-[#FF5722]]="profileService.settings().units === 'metric'"
+            [class.text-white]="profileService.settings().units === 'metric'"
+            [class.text-slate-400]="profileService.settings().units !== 'metric'"
+        >
+            Metric
+        </button>
+        <button
+            type="button"
+            (click)="changeUnit('imperial')"
+            class="px-3 py-1 rounded-lg text-xs font-bold transition-colors"
+            [class.bg-[#FF5722]]="profileService.settings().units === 'imperial'"
+            [class.text-white]="profileService.settings().units === 'imperial'"
+            [class.text-slate-400]="profileService.settings().units !== 'imperial'"
+        >
+            Imperial
+        </button>
+        </div>
+    </div>
+
+    <div class="p-5 flex items-center justify-between">
+        <div>
+        <h3 class="text-sm font-bold text-white">App Audio Cues</h3>
+        <p class="text-xs text-slate-400">Workout timer countdown bell and set finish chime</p>
+        </div>
+        <input
+        type="checkbox"
+        [checked]="profileService.settings().soundEffects"
+        (change)="toggleSetting('soundEffects')"
+        class="w-5 h-5 rounded bg-[#1C1C28] border-white/20 text-[#FF5722] focus:ring-[#FF5722] cursor-pointer"
+        />
+    </div>
+
+    <div class="p-5 flex items-center justify-between">
+        <div>
+        <h3 class="text-sm font-bold text-white">Application Language</h3>
+        <p class="text-xs text-slate-400">Current display language</p>
+        </div>
+        <span class="text-xs font-semibold text-slate-300 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+        {{ profileService.settings().language }}
+        </span>
+    </div>
+    </section>
+
+    <!-- Danger Zone / Exit App -->
+    <section class="p-5 rounded-3xl bg-rose-500/5 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h3 class="text-sm font-bold text-white">Exit or Sign Out</h3>
+        <p class="text-xs text-slate-400">Safely terminate your local workout session</p>
+    </div>
+    <button
+        type="button"
+        (click)="openExitModal.set(true)"
+        class="px-5 py-2.5 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-bold uppercase tracking-wider transition-colors self-start sm:self-auto"
+    >
+        Sign Out / Exit
+    </button>
+    </section>
+
+    <!-- Edit User Info Modal -->
+    @if (openEditInfoModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div class="relative w-full max-w-md rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl">
+        <button
+            type="button"
+            (click)="openEditInfoModal.set(false)"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+            aria-label="Close modal"
+        >
+            <app-icon name="x" size="18"/>
+        </button>
+
+        <h3 class="text-xl font-bold text-white mb-1">Edit Account Profile</h3>
+        <p class="text-xs text-slate-400 mb-6">Update your personal contact details.</p>
+
+        <div class="space-y-4 mb-6">
+            <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label for="editFirstName" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">First Name</label>
+                <input
+                id="editFirstName"
+                type="text"
+                [(ngModel)]="editFirstName"
+                class="w-full px-3.5 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white text-xs focus:outline-none focus:border-[#FF5722]"
+                />
+            </div>
+            <div>
+                <label for="editLastName" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Last Name</label>
+                <input
+                id="editLastName"
+                type="text"
+                [(ngModel)]="editLastName"
+                class="w-full px-3.5 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white text-xs focus:outline-none focus:border-[#FF5722]"
+                />
+            </div>
+            </div>
+
+            <div>
+            <label for="editEmail" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email</label>
+            <input
+                id="editEmail"
+                type="email"
+                [(ngModel)]="editEmail"
+                class="w-full px-3.5 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white text-xs focus:outline-none focus:border-[#FF5722]"
+            />
+            </div>
+
+            <div>
+            <label for="editPhone" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Phone Number</label>
+            <input
+                id="editPhone"
+                type="tel"
+                [(ngModel)]="editPhone"
+                class="w-full px-3.5 py-3 rounded-2xl bg-[#1C1C28] border border-white/10 text-white text-xs focus:outline-none focus:border-[#FF5722]"
+            />
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button
+            type="button"
+            (click)="openEditInfoModal.set(false)"
+            class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            >
+            Cancel
+            </button>
+            <button
+            type="button"
+            (click)="saveProfileInfo()"
+            class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF5722]/30"
+            >
+            Save Changes
+            </button>
+        </div>
+        </div>
+    </div>
+    }
+
+    <!-- Edit Weight Modal (Figma "weight..." frame) -->
+    @if (openEditWeightModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div class="relative w-full max-w-sm rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl text-center">
+        <button
+            type="button"
+            (click)="openEditWeightModal.set(false)"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+            aria-label="Close modal"
+        >
+            <app-icon name="x" size="18"/>
+        </button>
+
+        <span class="text-xs font-bold text-[#FF5722] uppercase tracking-wider block mb-1">Body Composition</span>
+        <h3 class="text-xl font-bold text-white mb-2">Update Weight</h3>
+        <p class="text-xs text-slate-400 mb-6">Recalculates metabolic burn and macro ratios.</p>
+
+        <div class="text-5xl font-black text-white tracking-tight mb-4">
+            {{ editWeightValue }} <span class="text-lg text-[#FF5722]">kg</span>
+        </div>
+
+        <input
+            type="range"
+            min="40"
+            max="160"
+            step="0.5"
+            [(ngModel)]="editWeightValue"
+            class="w-full accent-[#FF5722] mb-6"
+        />
+
+        <div class="flex items-center gap-3">
+            <button
+            type="button"
+            (click)="openEditWeightModal.set(false)"
+            class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            >
+            Cancel
+            </button>
+            <button
+            type="button"
+            (click)="saveWeight()"
+            class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF5722]/30"
+            >
+            Apply Weight
+            </button>
+        </div>
+        </div>
+    </div>
+    }
+
+    <!-- Edit Goal Modal (Figma "Goal E..." frame) -->
+    @if (openEditGoalModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div class="relative w-full max-w-md rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl">
+        <button
+            type="button"
+            (click)="openEditGoalModal.set(false)"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+            aria-label="Close modal"
+        >
+            <app-icon name="x" size="18"/>
+        </button>
+
+        <span class="text-xs font-bold text-[#FF5722] uppercase tracking-wider block mb-1">Target Setting</span>
+        <h3 class="text-xl font-bold text-white mb-2">Adjust Primary Goal</h3>
+        <p class="text-xs text-slate-400 mb-4">Adjust your program focus and daily caloric target.</p>
+
+        <div class="space-y-2 mb-6">
+            @for (g of goalChoices; track g.value) {
+            <button
+                type="button"
+                (click)="editGoalValue = g.value"
+                class="w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-colors"
+                [class.border-[#FF5722]]="editGoalValue === g.value"
+                [class.bg-[#FF5722]/10]="editGoalValue === g.value"
+                [class.border-white/10]="editGoalValue !== g.value"
+            >
+                <span class="text-xs font-bold text-white">{{ g.label }}</span>
+                <div
+                class="w-4 h-4 rounded-full border flex items-center justify-center"
+                [class.border-[#FF5722]]="editGoalValue === g.value"
+                [class.bg-[#FF5722]]="editGoalValue === g.value"
+                >
+                @if (editGoalValue === g.value) {
+                    <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+                }
+                </div>
+            </button>
+            }
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button
+            type="button"
+            (click)="openEditGoalModal.set(false)"
+            class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            >
+            Cancel
+            </button>
+            <button
+            type="button"
+            (click)="saveGoal()"
+            class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF5722]/30"
+            >
+            Save Goal
+            </button>
+        </div>
+        </div>
+    </div>
+    }
+
+    <!-- Edit Activity Level Modal (Figma "activit..." frame) -->
+    @if (openEditActivityModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div class="relative w-full max-w-md rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl">
+        <button
+            type="button"
+            (click)="openEditActivityModal.set(false)"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+            aria-label="Close modal"
+        >
+            <app-icon name="x" size="18"/>
+        </button>
+
+        <span class="text-xs font-bold text-[#FF5722] uppercase tracking-wider block mb-1">Energy Calibration</span>
+        <h3 class="text-xl font-bold text-white mb-2">Adjust Activity Level</h3>
+        <p class="text-xs text-slate-400 mb-4">Calibrates total daily energy expenditure (TDEE).</p>
+
+        <div class="space-y-2 mb-6">
+            @for (act of activityChoices; track act.value) {
+            <button
+                type="button"
+                (click)="editActivityValue = act.value"
+                class="w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-colors"
+                [class.border-[#FF5722]]="editActivityValue === act.value"
+                [class.bg-[#FF5722]/10]="editActivityValue === act.value"
+                [class.border-white/10]="editActivityValue !== act.value"
+            >
+                <div>
+                <h4 class="text-xs font-bold text-white">{{ act.label }}</h4>
+                <span class="text-[10px] text-slate-400">{{ act.desc }}</span>
+                </div>
+                <div
+                class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ml-2"
+                [class.border-[#FF5722]]="editActivityValue === act.value"
+                [class.bg-[#FF5722]]="editActivityValue === act.value"
+                >
+                @if (editActivityValue === act.value) {
+                    <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+                }
+                </div>
+            </button>
+            }
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button
+            type="button"
+            (click)="openEditActivityModal.set(false)"
+            class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            >
+            Cancel
+            </button>
+            <button
+            type="button"
+            (click)="saveActivity()"
+            class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF5722]/30"
+            >
+            Save Level
+            </button>
+        </div>
+        </div>
+    </div>
+    }
+
+    <!-- Subscription Tier Modal -->
+    @if (openSubscriptionModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div class="relative w-full max-w-lg rounded-3xl bg-[#161622] border border-white/10 p-6 shadow-2xl">
+        <button
+            type="button"
+            (click)="openSubscriptionModal.set(false)"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white p-2"
+            aria-label="Close modal"
+        >
+            <app-icon name="x" size="18"/>
+        </button>
+
+        <div class="text-center mb-6">
+            <span class="text-xs font-bold text-[#FF5722] uppercase tracking-wider block mb-1">Super Fitness Tiers</span>
+            <h3 class="text-xl font-bold text-white">Upgrade Membership</h3>
+            <p class="text-xs text-slate-400">Unlock complete AI coaching, custom meal plans & HD videos.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <!-- Pro Tier -->
+            <div class="p-4 rounded-2xl bg-white/5 border border-[#FF5722]/40 text-center relative overflow-hidden">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#FF5722] block mb-1">Current Plan</span>
+            <h4 class="text-base font-extrabold text-white">Pro Athlete</h4>
+            <div class="text-2xl font-black text-white my-2">$19<span class="text-xs text-slate-400">/mo</span></div>
+            <ul class="text-[11px] text-slate-300 space-y-1 mb-4 text-left">
+                <li>✓ Full Gym Routine Access</li>
+                <li>✓ Smart AI Coach</li>
+                <li>✓ Daily Macro Log</li>
+            </ul>
+            <button
+                type="button"
+                (click)="upgradeTier('Pro')"
+                class="w-full py-2 rounded-xl bg-[#FF5722] text-white font-bold text-xs"
+            >
+                Active Plan
+            </button>
+            </div>
+
+            <!-- Elite Tier -->
+            <div class="p-4 rounded-2xl bg-gradient-to-b from-[#2A1E1E] to-[#161622] border border-[#FF5722] text-center relative overflow-hidden glow-orange-sm">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#FF8A65] block mb-1">Recommended</span>
+            <h4 class="text-base font-extrabold text-white">Elite Beast</h4>
+            <div class="text-2xl font-black text-white my-2">$39<span class="text-xs text-slate-400">/mo</span></div>
+            <ul class="text-[11px] text-slate-300 space-y-1 mb-4 text-left">
+                <li>✓ Everything in Pro</li>
+                <li>✓ 1-on-1 Certified Review</li>
+                <li>✓ Form Biomechanics AI</li>
+            </ul>
+            <button
+                type="button"
+                (click)="upgradeTier('Elite')"
+                class="w-full py-2 rounded-xl bg-gradient-to-r from-[#FF5722] to-[#FF7043] text-white font-bold text-xs shadow-md shadow-[#FF5722]/40"
+            >
+                Upgrade to Elite
+            </button>
+            </div>
+        </div>
+        </div>
+    </div>
+    }
+
+    <!-- Exit Modal -->
+    @if (openExitModal()) {
+    <app-exit-modal
+        (confirm)="confirmSignOut()"
+        (cancel)="openExitModal.set(false)"
+    />
+    }
+</div>

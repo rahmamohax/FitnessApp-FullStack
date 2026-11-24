@@ -1,17 +1,24 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { UserProfile, UpdateProfileRequest, UserSettings, UpdateSettingsRequest } from '../models/profile.models';
+import { UserProfile, UpdateProfileRequest, UserSettings, UpdateSettingsRequest, ViewProfileResponse, UpdateProfileResponse, UploadProfilePictureResponse, ViewSettingsResponse, UpdateBackendSettingsRequest, UpdateSettingsResponse } from '../models/profile.models';
 import { ActivityLevel, FitnessGoal, Gender, SubmitFitnessStatsRequest } from '../models/fce.models';
 import { FceService } from './fce.service';
 import { ApiResponse } from '../models/api-response.model';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { AuthService } from './auth.service';
+import { catchError, forkJoin, map, Observable, of, switchMap, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
-})
+}) 
 export class ProfileService {
-  private fceService = inject(FceService);
-
+  private readonly apiUrl = `${environment.apiUrl}`;
   private readonly STORAGE_KEY = 'super_fitness_profile';
   private readonly SETTINGS_KEY = 'super_fitness_settings';
+
+  private http = inject(HttpClient);
+  private authService = inject(AuthService);
+  private fceService = inject(FceService);
 
   private profileSignal = signal<UserProfile>(this.getInitialProfile());
   private settingsSignal = signal<UserSettings>(this.getInitialSettings());
@@ -33,35 +40,24 @@ export class ProfileService {
         } catch {}
       }
     }
-
-    const defaultStats: SubmitFitnessStatsRequest = {
-      age: 25,
-      gender: Gender.Male,
-      weight: 82.5,
-      height: 178,
-      goal: FitnessGoal.GetFitter,
-      activityLevel: ActivityLevel.Intermediate
-    };
-
-    const metrics = this.fceService.calculateMetrics(defaultStats);
+    const currentUser = this.authService.currentUser();
 
     return {
-      userId: 'usr_001_rahma',
-      firstName: 'Rahma',
-      lastName: 'Mohammed',
-      email: 'rahma.mohammed@superfitness.com',
-      phoneNumber: '+20 102 345 6789',
+      userId: currentUser?.id || '',
+      firstName: currentUser?.firstName || '',
+      lastName: currentUser?.lastName || '',
+      email: currentUser?.email || '',
+      phoneNumber: '',
       profilePictureUrl: '',
-      age: defaultStats.age,
-      gender: defaultStats.gender,
-      weight: defaultStats.weight,
-      targetWeight: 78.0,
-      height: defaultStats.height,
-      goal: defaultStats.goal,
-      activityLevel: defaultStats.activityLevel,
-      metrics,
-      membershipTier: 'Pro',
-      joinedDate: 'January 2026'
+      age: 0,
+      gender: Gender.None,
+      weight: 0,
+      targetWeight:0,
+      height: 0,
+      goal: FitnessGoal.None,
+      activityLevel: ActivityLevel.None,
+      membershipTier: currentUser?.isPremium ? 'Pro' : 'Free',
+      joinedDate: 'November 2026'
     };
   }
 
@@ -100,28 +96,89 @@ export class ProfileService {
     }
   }
 
-  updateProfile(request: UpdateProfileRequest): ApiResponse<UserProfile> {
-    const current = this.profileSignal();
-    const updated: UserProfile = {
-      ...current,
-      firstName: request.firstName,
-      lastName: request.lastName,
-      email: request.email,
-      phoneNumber: request.phoneNumber ?? current.phoneNumber
-    };
-
-    this.persistProfile(updated);
-
-    return {
-      isSuccess: true,
-      message: 'Profile updated successfully.',
-      data: updated,
-      statusCode: 200,
-      timestamp: new Date().toISOString()
-    };
+ loadProfile(): Observable<UserProfile> {
+    const userId = this.authService.currentUser()?.id;
+    if (!userId) {
+      return of(this.profileSignal());
+    }
+    return forkJoin({
+      profileRes: this.http.get<ApiResponse<ViewProfileResponse>>(`${this.apiUrl}/profile`),
+      statsRes: this.fceService.getStats(userId).pipe(catchError(() => of(null))),
+      metricsRes: this.fceService.getMetrics(userId).pipe(catchError(() => of(null))),
+    }).pipe(
+      map(({ profileRes, statsRes, metricsRes }) => {
+        const p = profileRes.data;
+        const s = statsRes?.data;
+        const m = metricsRes?.data;
+        const authUser = this.authService.currentUser();
+        const updated: UserProfile = {
+          userId: p?.userId?.toString() || userId,
+          firstName: p?.firstName || authUser?.firstName || '',
+          lastName: p?.lastName || authUser?.lastName || '',
+          email: authUser?.email || '',
+          phoneNumber: '',
+          profilePictureUrl: p?.profilePictureUrl || '',
+          age: s?.age ?? 0,
+          gender: (s?.gender as Gender) ?? Gender.None,
+          weight: s?.weight ?? p?.fceProfile?.weight ?? 0,
+          height: s?.height ?? p?.fceProfile?.height ?? 0,
+          targetWeight: s?.weight ? Math.round(s.weight * 0.95) : 0,
+          goal: (s?.goal as FitnessGoal) ?? FitnessGoal.None,
+          activityLevel: (s?.activityLevel as ActivityLevel) ?? ActivityLevel.None,
+          metrics: m ? {
+            bmr: Math.round(m.bmr),
+            tdee: Math.round(m.tdee),
+            calorieTarget: Math.round(m.calorieTarget),
+            bmi: s?.weight && s?.height ? Math.round((s.weight / Math.pow(s.height / 100, 2)) * 10) / 10 : 0,
+            bmiCategory: m.status || 'Normal',
+          } : undefined,
+          membershipTier: authUser?.isPremium ? 'Pro' : 'Free',
+          joinedDate: s?.RecordedAt
+            ? new Date(s.RecordedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+            : 'November 2026',
+          progressStatistics: p?.progressStatistics,
+        };
+        this.persistProfile(updated);
+        return updated;
+      })
+    );
   }
 
-  updateMetrics(stats: Partial<SubmitFitnessStatsRequest>): ApiResponse<UserProfile> {
+  updateProfile(request: UpdateProfileRequest): Observable<ApiResponse<UpdateProfileResponse>> {
+    return this.http.put<ApiResponse<UpdateProfileResponse>>(`${this.apiUrl}/profile`, request).pipe(
+      tap(res => {
+        if (res.isSuccess){
+          const current = this.profileSignal();
+          this.persistProfile({
+            ...current,
+            firstName: request.firstName,
+            lastName: request.lastName,
+            email: request.email,
+            phoneNumber: request.phoneNumber ?? current.phoneNumber
+          });
+        }
+      })
+    );
+    
+  }
+
+  uploadProfilePicture(file: File): Observable<ApiResponse<UploadProfilePictureResponse>> {
+    const formData = new FormData();
+    formData.append('profilePicture', file, file.name);
+    return this.http.post<ApiResponse<UploadProfilePictureResponse>>(`${this.apiUrl}/profile/picture`, formData).pipe(
+      tap(res => {
+        if (res.isSuccess && res.data?.profilePictureUrl) {
+          const current = this.profileSignal();
+          this.persistProfile({
+            ...current,
+            profilePictureUrl: res.data.profilePictureUrl,
+          });
+        }
+      })
+    );
+  }
+
+  updateMetrics(stats: Partial<SubmitFitnessStatsRequest>): Observable<UserProfile> {
     const current = this.profileSignal();
     const mergedStats: SubmitFitnessStatsRequest = {
       age: stats.age ?? current.age,
@@ -129,29 +186,48 @@ export class ProfileService {
       weight: stats.weight ?? current.weight,
       height: stats.height ?? current.height,
       goal: stats.goal ?? current.goal,
-      activityLevel: stats.activityLevel ?? current.activityLevel
+      activityLevel: stats.activityLevel ?? current.activityLevel,
     };
-
-    const recalculated = this.fceService.calculateMetrics(mergedStats);
-
-    const updated: UserProfile = {
-      ...current,
-      ...mergedStats,
-      metrics: recalculated
-    };
-
-    this.persistProfile(updated);
-
-    return {
-      isSuccess: true,
-      message: 'Fitness metrics updated and recalculated successfully.',
-      data: updated,
-      statusCode: 200,
-      timestamp: new Date().toISOString()
-    };
+    return this.fceService.submitFitnessStats(mergedStats).pipe(
+      switchMap(() => this.fceService.calculateMetricServer()),
+      switchMap(() => this.loadProfile())
+    );
   }
 
-  updateSettings(request: UpdateSettingsRequest): ApiResponse<UserSettings> {
+    loadSettings(): Observable<UserSettings> {
+    return this.http.get<ApiResponse<ViewSettingsResponse>>(`${this.apiUrl}/settings`).pipe(
+      map(res => {
+        const pref = res.data?.userPreferences;
+        const notif = res.data?.notificationSettings;
+        const priv = res.data?.privacySettings;
+
+        const isImperial = pref?.weightUnit?.toLowerCase() === 'lbs' || pref?.heightUnit?.toLowerCase() === 'in';
+        const current = this.settingsSignal();
+
+        const updated: UserSettings = {
+          ...current,
+          notificationsEnabled: notif?.pushNotifications ?? current.notificationsEnabled,
+          workoutReminders: notif?.workoutReminders ?? current.workoutReminders,
+          mealReminders: notif?.mealReminders ?? current.mealReminders,
+          pushNotifications: notif?.pushNotifications ?? true,
+          emailNotifications: notif?.emailNotifications ?? true,
+          achievementAlerts: notif?.achievementAlerts ?? true,
+          weeklyReports: notif?.weeklyReports ?? true,
+          units: isImperial ? 'imperial' : 'metric',
+          theme: (pref?.theme?.toLowerCase() === 'light' ? 'light' : 'dark'),
+          language: pref?.language || current.language,
+          profileVisibility: priv?.profileVisibility || 'Public',
+          showProgressToFriends: priv?.showProgressToFriends ?? false,
+          allowDataSharing: priv?.allowDataSharing ?? false,
+        };
+
+        this.persistSettings(updated);
+        return updated;
+      }),
+      catchError(() => of(this.settingsSignal()))
+    );
+  }
+  updateSettings(request: UpdateSettingsRequest): Observable<UserSettings> {
     const current = this.settingsSignal();
     const updated: UserSettings = {
       ...current,
@@ -159,17 +235,51 @@ export class ProfileService {
     };
 
     this.persistSettings(updated);
+    
+    const payload: UpdateBackendSettingsRequest = request.backendPayload ?? {};
 
-    return {
-      isSuccess: true,
-      message: 'Settings updated successfully.',
-      data: updated,
-      statusCode: 200,
-      timestamp: new Date().toISOString()
-    };
+    if(request.units !== undefined){
+      payload.preferences = {
+        ...payload.preferences,
+        weightUnit: request.units === 'imperial' ? 'lbs' : 'kg',
+        heightUnit: request.units === 'imperial' ? 'in' : 'cm',
+        distanceUnit: request.units === 'imperial' ? 'mi' : 'km'
+      };
+    }
+
+    if(request.language !== undefined){
+      payload.preferences = {
+        ...payload.preferences,
+        language: request.language
+      };
+    }
+
+    if(request.theme !== undefined){
+      payload.preferences = {
+        ...payload.preferences,
+        theme: request.theme
+      };
+    }
+
+    if(request.notificationsEnabled !== undefined){
+      payload.notifications = {
+        ...payload.notifications,
+        pushNotifications: request.notificationsEnabled,
+        workoutReminders: request.notificationsEnabled,
+        mealReminders: request.notificationsEnabled,
+        achievementAlerts: request.notificationsEnabled,
+        weeklyReports: request.notificationsEnabled,
+        emailNotifications: request.notificationsEnabled
+      };
+    }
+
+    return this.http.put<ApiResponse<UpdateSettingsResponse>>(`${this.apiUrl}/settings`, payload).pipe(
+      map(() => updated),
+      catchError(() => of(updated))
+    );
   }
 
-  upgradeSubscription(tier: 'Pro' | 'Elite'): ApiResponse<UserProfile> {
+  upgradeSubscription(tier: 'Pro' | 'Elite'): void {
     const current = this.profileSignal();
     const updated: UserProfile = {
       ...current,
@@ -177,13 +287,5 @@ export class ProfileService {
     };
 
     this.persistProfile(updated);
-
-    return {
-      isSuccess: true,
-      message: `Successfully upgraded to ${tier} membership!`,
-      data: updated,
-      statusCode: 200,
-      timestamp: new Date().toISOString()
-    };
   }
 }
