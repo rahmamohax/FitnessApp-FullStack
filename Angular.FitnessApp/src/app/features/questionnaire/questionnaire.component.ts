@@ -126,8 +126,8 @@ export class QuestionnaireComponent {
     });
   }
 
-  skipToApp(): void {
-    this.authService.completeProfileOnboarding();
-    this.router.navigate(['/app/home']);
-  }
+  // skipToApp(): void {
+  //   this.authService.completeProfileOnboarding();
+  //   this.router.navigate(['/app/home']);
+  // }
 }
