@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ProfileService } from '../../core/services/profile.service';
 import { WorkoutService } from '../../core/services/workout.service';
@@ -23,7 +23,7 @@ import { Workout } from '../../core/models/workout.models';
     }
   `]
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   profileService = inject(ProfileService);
   workoutService = inject(WorkoutService);
   nutritionService = inject(NutritionService);
@@ -42,9 +42,14 @@ export class HomeComponent {
     { label: 'Sun', date: '25', completed: false }
   ];
 
-  featuredWorkout = () => this.workoutService.workouts()[0];
-  popularWorkouts = this.workoutService.workouts().slice(1, 4);
+  featuredWorkout = computed(() => this.workoutService.workouts()[0]);
+  popularWorkouts = computed(() => this.workoutService.workouts().slice(1, 4));
 
+  ngOnInit(): void {
+     if (this.workoutService.workouts().length === 0) {
+      this.workoutService.fetchWorkouts().subscribe();
+    }
+  }
   addWater(): void {
     this.nutritionService.addWater(250);
     this.toastService.success('Added 250ml water intake!', 'Hydration');

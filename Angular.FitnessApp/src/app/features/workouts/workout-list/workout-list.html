@@ -1,0 +1,190 @@
+<div class="space-y-6 pb-6 animate-fade-in">
+      <!-- Header matching Figma Gym -->
+      <section>
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="text-xs font-semibold text-[#FF5722] uppercase tracking-wider">Exercise Library</span>
+            <h1 class="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">Workouts & Gym</h1>
+          </div>
+          <span class="text-xs font-bold text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+            {{ filteredWorkouts().length }} Routines
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">
+          Curated training routines structured for progressive overload, conditioning, and aesthetic symmetry.
+        </p>
+      </section>
+
+      <!-- Search Bar -->
+      <section class="relative">
+        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 pointer-events-none">
+          <app-icon name="search" size="18"/>
+        </span>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search by muscle, routine name, or equipment..."
+          class="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-[#161622] border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-[#FF5722] transition-colors"
+        />
+        @if (searchQuery) {
+          <button
+            type="button"
+            (click)="searchQuery = ''"
+            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white"
+          >
+            <app-icon name="x" size="16"/>
+          </button>
+        }
+      </section>
+
+      <!-- Category Filter Carousel (Figma muscle filters) -->
+      <section>
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          @for (cat of categories; track cat.value) {
+            <button
+              type="button"
+              (click)="selectedCategory.set(cat.value)"
+              class="px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all uppercase tracking-wider"
+              [class.bg-[#FF5722]]="selectedCategory() === cat.value"
+              [class.text-white]="selectedCategory() === cat.value"
+              [class.glow-orange-sm]="selectedCategory() === cat.value"
+              [class.bg-[#161622]]="selectedCategory() !== cat.value"
+              [class.text-slate-400]="selectedCategory() !== cat.value"
+              [class.border]="selectedCategory() !== cat.value"
+              [class.border-white/5]="selectedCategory() !== cat.value"
+            >
+              {{ cat.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Difficulty Filter -->
+      <section class="flex items-center gap-2">
+        <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Level:</span>
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          @for (diff of difficulties; track diff.value) {
+            <button
+              type="button"
+              (click)="selectedDifficulty.set(diff.value)"
+              class="px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-colors"
+              [class.bg-white/15]="selectedDifficulty() === diff.value"
+              [class.text-white]="selectedDifficulty() === diff.value"
+              [class.text-slate-400]="selectedDifficulty() !== diff.value"
+              [class.hover:text-slate-200]="selectedDifficulty() !== diff.value"
+            >
+              {{ diff.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Workout Cards Grid -->
+      <section>
+        @if (filteredWorkouts().length === 0) {
+          <div class="py-16 text-center rounded-3xl bg-[#161622] border border-white/5 p-6">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center text-slate-500">
+              <app-icon name="search" size="28"/>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1">No workouts found</h3>
+            <p class="text-xs text-slate-400 mb-4">Try clearing your search query or choosing another muscle group.</p>
+            <button
+              type="button"
+              (click)="resetFilters()"
+              class="px-4 py-2 rounded-xl bg-[#FF5722] text-white text-xs font-semibold"
+            >
+              Reset Filters
+            </button>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (workout of filteredWorkouts(); track workout.workoutId) {
+              <a
+                [routerLink]="['/app/workouts', workout.workoutId]"
+                class="rounded-3xl bg-[#161622] border border-white/5 overflow-hidden hover:border-[#FF5722]/50 transition-all duration-300 group flex flex-col justify-between shadow-xl"
+              >
+                <div>
+                  <div class="h-44 relative overflow-hidden">
+                    <img
+                      [src]="workout.imageUrl"
+                      [alt]="workout.name"
+                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#161622] via-[#161622]/40 to-transparent"></div>
+
+                    <!-- Category & Difficulty Badges -->
+                    <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
+                      <span class="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-[#FF5722] uppercase tracking-wider border border-white/10">
+                        {{ workout.category }}
+                      </span>
+                      <span class="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-semibold text-slate-300 border border-white/10 capitalize">
+                        {{ workout.difficulty }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="p-4">
+                    <h3 class="text-base font-bold text-white mb-1 group-hover:text-[#FF5722] transition-colors">
+                      {{ workout.name }}
+                    </h3>
+                    <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-3">
+                      {{ workout.description }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="p-4 pt-0 border-t border-white/5 mt-auto flex items-center justify-between text-xs text-slate-300">
+                  <div class="flex items-center gap-3">
+                    <span class="flex items-center gap-1">
+                      <app-icon name="clock" size="14" cssClass="text-[#FF5722]"/>
+                      {{ workout.durationInMinutes }}m
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <app-icon name="flame" size="14" cssClass="text-[#FF5722]"/>
+                      {{ workout.caloriesBurn }} kcal
+                    </span>
+                  </div>
+
+                  <span class="text-xs font-bold text-[#FF5722] group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Details
+                    <app-icon name="chevron-right" size="14"/>
+                  </span>
+                </div>
+              </a>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Structured Workout Plans Section -->
+      <section class="mt-10">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold uppercase tracking-wider text-white">Full Training Programs</h2>
+            <p class="text-xs text-slate-400">Multi-week structured cycles calibrated by difficulty</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          @for (plan of workoutService.workoutPlans(); track plan.planId) {
+            <div class="p-5 rounded-3xl bg-gradient-to-b from-[#1A1A28] to-[#12121A] border border-white/5 flex flex-col justify-between shadow-xl">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="px-2 py-0.5 rounded-full bg-[#FF5722]/15 text-[#FF5722] text-[10px] font-bold uppercase">
+                    {{ plan.difficulty }}
+                  </span>
+                  <span class="text-[11px] text-slate-400">{{ plan.durationWeeks }} Weeks</span>
+                </div>
+                <h3 class="text-sm font-bold text-white mb-1.5">{{ plan.name }}</h3>
+                <p class="text-xs text-slate-400 leading-relaxed mb-4">{{ plan.description }}</p>
+              </div>
+
+              <div class="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
+                <span class="text-slate-300 font-semibold">{{ plan.workoutsCount }} Total Sessions</span>
+                <span class="text-[#FF5722] font-bold hover:underline cursor-pointer">Enrolled</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    </div>

@@ -18,6 +18,72 @@ export enum WorkOutDifficulty {
 
 export { WorkOutDifficulty as WorkoutDifficulty };
 
+// Backend DTOs from WorkOutController.cs
+export interface BackendWorkoutViewModel {
+  map(arg0: (item: any) => { workoutId: any; name: any; planId: any; category: any; difficulty: any; durationInMinutes: any; caloriesBurn: number; description: string; imageUrl: string; exercisesCount: number; exercises: Exercise[]; }): WorkoutDetails[];
+  workoutId: number;
+  name: string;
+  planId?: string;
+  category: string;
+  durationInMinutes: number;
+  difficulty: string;
+}
+
+export interface BackendWorkoutExerciseViewModel {
+  exerciseId: number;
+  exerciseName: string;
+  targetMuscles: string;
+  exerciseEquipment: string;
+  exerciseDifficulty: string;
+  exerciseDescription: string;
+  exerciseVideoUrl?: string;
+  setsDefault: number;
+  repsDefault: number;
+  restTimeInSeconds: number;
+  orderIndex: number;
+}
+
+export interface BackendWorkoutDetailsViewModel {
+  workoutId: number;
+  planId?: string;
+  workoutName: string;
+  workoutCategory: string;
+  workoutDifficulty: string;
+  durationInMinutes: number;
+  exercises: BackendWorkoutExerciseViewModel[];
+}
+
+export interface BackendWorkoutPlanViewModel {
+  planId: string;
+  name: string;
+  description?: string;
+  goal?: string;
+  status?: string;
+  difficulty?: string;
+}
+
+export interface BackendStartSessionExercise {
+  id: number;
+  exerciseId: number;
+  name: string;
+  targetMuscles: string;
+  equipment: string;
+  difficulty: string;
+  description: string;
+  videoUrl?: string;
+  setsDefault: number;
+  repsDefault: number;
+  restTimeInSeconds: number;
+  orderIndex: number;
+}
+
+export interface BackendStartSessionResponse {
+  sessionId: string;
+  status: string;
+  exercisesInSession: BackendStartSessionExercise[];
+}
+
+// Frontend Domain Models
 export interface Exercise {
   exerciseId: number;
   name: string;

@@ -122,6 +122,7 @@
       </section>
 
       <!-- Featured Workout Hero Banner (Figma featured workout) -->
+      @if (featuredWorkout(); as featured) {
       <section class="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl group">
         <img
           [src]="featuredWorkout().imageUrl"
@@ -176,6 +177,7 @@
           </div>
         </div>
       </section>
+    }
 
       <!-- AI Smart Coach Card + Daily Nutrition Card Split -->
       <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,7 +264,7 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          @for (workout of popularWorkouts; track workout.workoutId) {
+          @for (workout of popularWorkouts(); track workout.workoutId) {
             <a
               [routerLink]="['/app/workouts', workout.workoutId]"
               class="rounded-3xl bg-[#161622] border border-white/5 overflow-hidden hover:border-[#FF5722]/50 transition-all duration-300 group shadow-xl"
