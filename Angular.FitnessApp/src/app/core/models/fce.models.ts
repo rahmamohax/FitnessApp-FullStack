@@ -32,6 +32,43 @@ export interface SubmitFitnessStatsRequest {
   activityLevel: ActivityLevel;
 }
 
+export interface SubmitFitnessStatsResponse {
+  id: number;
+  userId?: string;
+  weight: number; // in kg
+  height: number; // in cm
+  age: number;
+  gender: string;
+  goal: string;
+  activityLevel: string;
+  RecordedAt: string;
+}
+
+export interface CalculateMetricsResponse {
+  userId: string;
+  bmr: number;
+  tdee: number;
+  calorieTarget: number;
+  status: string;
+  calculatedAt: string;
+  lastUpdatedAt?: string;
+}
+
+export interface AssignFitnessPlanResponse {
+  planId: string;
+  planName: string;
+  description: string;
+  goal: string;
+  status: string;
+  minCalorie: number;
+  maxCalorie: number;
+  estimatedDuration: string;
+  workoutsPerWeek: number;
+  programType: string;
+  assignedAt: string;
+}
+
+// Client-side preview and local calculation structure
 export interface FitnessMetrics {
   bmr: number;
   tdee: number;
