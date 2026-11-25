@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { UserProfile, UpdateProfileRequest, UserSettings, UpdateSettingsRequest, ViewProfileResponse, UpdateProfileResponse, UploadProfilePictureResponse, ViewSettingsResponse, UpdateBackendSettingsRequest, UpdateSettingsResponse } from '../models/profile.models';
-import { ActivityLevel, FitnessGoal, Gender, SubmitFitnessStatsRequest } from '../models/fce.models';
+import { ActivityLevel, FitnessGoal, Gender, normalizeActivityLevel, normalizeFitnessGoal, SubmitFitnessStatsRequest } from '../models/fce.models';
 import { FceService } from './fce.service';
 import { ApiResponse } from '../models/api-response.model';
 import { HttpClient } from '@angular/common/http';
@@ -123,8 +123,8 @@ export class ProfileService {
           weight: s?.weight ?? p?.fceProfile?.weight ?? 0,
           height: s?.height ?? p?.fceProfile?.height ?? 0,
           targetWeight: s?.weight ? Math.round(s.weight * 0.95) : 0,
-          goal: (s?.goal as FitnessGoal) ?? FitnessGoal.None,
-          activityLevel: (s?.activityLevel as ActivityLevel) ?? ActivityLevel.None,
+          goal: normalizeFitnessGoal(s?.goal),
+          activityLevel: normalizeActivityLevel(s?.activityLevel),
           metrics: m ? {
             bmr: Math.round(m.bmr),
             tdee: Math.round(m.tdee),
@@ -185,8 +185,8 @@ export class ProfileService {
       gender: stats.gender ?? current.gender,
       weight: stats.weight ?? current.weight,
       height: stats.height ?? current.height,
-      goal: stats.goal ?? current.goal,
-      activityLevel: stats.activityLevel ?? current.activityLevel,
+      goal: normalizeFitnessGoal(stats.goal ?? current.goal),
+      activityLevel: normalizeActivityLevel(stats.activityLevel ?? current.activityLevel),
     };
     return this.fceService.submitFitnessStats(mergedStats).pipe(
       switchMap(() => this.fceService.calculateMetricServer()),

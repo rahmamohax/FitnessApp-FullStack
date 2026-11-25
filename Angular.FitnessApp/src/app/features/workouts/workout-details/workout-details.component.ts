@@ -133,20 +133,24 @@ export class WorkoutDetailsComponent implements OnInit, OnDestroy {
 
     const w = this.workout()!;
     const durMins = Math.max(1, Math.round(this.sessionSeconds() / 60));
-    const calories = Math.round(durMins * 8.5) + 120;
+    // Calculate realistic rate based on the workout's estimated calories per minute
+    const burnPerMin = (w.caloriesBurn && w.durationInMinutes) ? (w.caloriesBurn / w.durationInMinutes) : 8.5;
+    const calories = Math.max(1, Math.round(durMins * burnPerMin));
 
     this.completedDurationMinutes.set(durMins);
     this.completedCalories.set(calories);
+    const activeSess = this.workoutService.activeSession();
 
     this.progressService.logWorkoutCompletion(
       {
         workoutId: w.workoutId,
+        sessionId: activeSess?.sessionId || `sess_${Date.now()}`,
         durationInMinutes: durMins,
         caloriesBurned: calories,
         exercisesCompleted: this.currentExerciseIndex() + 1
       },
       w.name
-    );
+    ).subscribe();
 
     this.isSessionActive.set(false);
     this.workoutService.cancelSession();

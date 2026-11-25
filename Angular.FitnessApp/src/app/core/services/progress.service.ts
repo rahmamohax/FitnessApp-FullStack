@@ -1,28 +1,28 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { Achievement, ProgressDashboard, ProgressStats, WeightEntry } from '../models/progress.models';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { Achievement, BackendLogWeightRequest, BackendWorkoutCompletionRequest, ProgressDashboard, ProgressStats, ViewProgressDashboardResponse, WeightEntry, WorkOutCompletionResponse } from '../models/progress.models';
 import { WorkoutCompletionRequest } from '../models/workout.models';
 import { ApiResponse } from '../models/api-response.model';
+import { environment } from '../../../environments/environment';
+import { HttpClient } from '@angular/common/http';
+import { catchError, map, Observable, of, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProgressService {
+  private readonly apiUrl = `${environment.apiUrl}/progress`;
+  private http = inject(HttpClient);
+
   private statsSignal = signal<ProgressStats>({
-    totalWorkouts: 28,
-    totalCaloriesBurned: 14200,
-    totalMinutesTrained: 1350,
-    currentStreakDays: 7,
-    longestStreakDays: 14,
-    weightLostKg: 3.5
+    totalWorkouts: 0,
+    totalCaloriesBurned: 0,
+    totalMinutesTrained: 0,
+    currentStreakDays: 0,
+    longestStreakDays: 0,
+    weightLostKg: 0
   });
 
-  private weightHistorySignal = signal<WeightEntry[]>([
-    { id: 'w1', weight: 86.0, date: '2026-09-01', notes: 'Initial starting weight' },
-    { id: 'w2', weight: 85.2, date: '2026-09-15', notes: 'Post 2-week check-in' },
-    { id: 'w3', weight: 84.1, date: '2026-10-01', notes: 'Increased daily cardio' },
-    { id: 'w4', weight: 83.2, date: '2026-10-10', notes: 'Clean nutrition adherence' },
-    { id: 'w5', weight: 82.5, date: '2026-10-20', notes: 'Current check-in' }
-  ]);
+  private weightHistorySignal = signal<WeightEntry[]>([]);
 
   private recentWorkoutsSignal = signal<Array<{
     workoutId: number;
@@ -30,58 +30,9 @@ export class ProgressService {
     completedAt: string;
     durationMinutes: number;
     caloriesBurned: number;
-  }>>([
-    { workoutId: 1, name: 'Chest Hypertrophy & Power', completedAt: 'Today, 07:15 AM', durationMinutes: 45, caloriesBurned: 380 },
-    { workoutId: 3, name: 'V-Taper Back & Biceps', completedAt: 'Yesterday, 06:45 PM', durationMinutes: 50, caloriesBurned: 410 },
-    { workoutId: 4, name: 'Lower Body Strength & Glutes', completedAt: '2 days ago', durationMinutes: 55, caloriesBurned: 520 },
-    { workoutId: 6, name: 'Six-Pack Shred & Core Matrix', completedAt: '3 days ago', durationMinutes: 30, caloriesBurned: 250 }
-  ]);
+  }>>([]);
 
-  private achievementsSignal = signal<Achievement[]>([
-    {
-      id: 'ach_1',
-      title: 'First Step',
-      description: 'Completed your first recorded workout session.',
-      icon: 'fire',
-      unlockedAt: 'Sep 02, 2026',
-      isUnlocked: true,
-      progressPercent: 100
-    },
-    {
-      id: 'ach_2',
-      title: '7-Day Unstoppable',
-      description: 'Maintained a workout streak for 7 consecutive days.',
-      icon: 'trophy',
-      unlockedAt: 'Oct 20, 2026',
-      isUnlocked: true,
-      progressPercent: 100
-    },
-    {
-      id: 'ach_3',
-      title: 'Calorie Crusher',
-      description: 'Burn a total of 15,000 calories across all sessions.',
-      icon: 'zap',
-      isUnlocked: false,
-      progressPercent: 94
-    },
-    {
-      id: 'ach_4',
-      title: 'Iron Discipline',
-      description: 'Complete 30 full workout routines.',
-      icon: 'dumbbell',
-      isUnlocked: false,
-      progressPercent: 93
-    },
-    {
-      id: 'ach_5',
-      title: 'Hydration Master',
-      description: 'Reach 3,000ml water intake 5 days in a row.',
-      icon: 'droplet',
-      unlockedAt: 'Oct 18, 2026',
-      isUnlocked: true,
-      progressPercent: 100
-    }
-  ]);
+  private achievementsSignal = signal<Achievement[]>([]);
 
   readonly stats = this.statsSignal.asReadonly();
   readonly weightHistory = this.weightHistorySignal.asReadonly();
@@ -95,58 +46,142 @@ export class ProgressService {
     achievements: this.achievementsSignal()
   }));
 
-  logWeight(weight: number, notes?: string): ApiResponse<WeightEntry> {
+  constructor() {
+    // Automatically load live progress data on startup
+    if (typeof window !== 'undefined') {
+      this.loadDashboard().subscribe();
+    }
+  }
+
+  loadDashboard(): Observable<ProgressDashboard> {
+    return this.http.get<ApiResponse<ViewProgressDashboardResponse>>(this.apiUrl).pipe(
+      map(res => {
+        const d = res.data;
+        if(!d) return this.dashboard();
+
+        const totalMinutes = (d.workoutHistory || []).reduce((acc, w) => acc + w.durationInMinutes, 0);
+
+        const stats: ProgressStats = {
+          totalWorkouts: d.statisticsSummary?.totalWorkouts ?? (d.workoutHistory?.length || 0),
+          totalCaloriesBurned: d.statisticsSummary?.totalCaloriesBurned ?? 0,
+          totalMinutesTrained: totalMinutes,
+          currentStreakDays: 0,
+          longestStreakDays: 0,
+          weightLostKg: Math.round((d.statisticsSummary?.totalWeightLost ?? 0) * 10) / 10    
+        };
+
+        const weightEntries: WeightEntry[] = (d.weightHistory || [])
+        .map((w, idx) => ({
+          id: `w_${idx}_${new Date(w.date).getTime()}`,
+          weight: w.weight,
+          date: new Date(w.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          notes: w.notes || 'Checkpoint'
+        }));
+
+        const workouts = (d.workoutHistory || []).map(w => ({
+          workoutId: w.id,
+          name: `Workout #${w.id}`,
+          completedAt: new Date(w.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          durationMinutes: w.durationInMinutes,
+          caloriesBurned: w.caloriesBurned
+        }));
+
+        const achievements: Achievement[] = (d.achievements || []).map((a, idx) => ({
+          id: `ach_${a.achievementId || idx}`,
+          title: a.name,
+          description: a.description || 'Milestone achieved along your progression.',
+          icon: this.mapAchievementIcon(a.name),
+          unlockedAt: a.earnedAt ? new Date(a.earnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined,
+          isUnlocked: true,
+          progressPercent: 100
+        }));
+
+        this.statsSignal.set(stats);
+        this.weightHistorySignal.set(weightEntries);
+        this.recentWorkoutsSignal.set(workouts);
+        this.achievementsSignal.set(achievements);
+
+        return {
+          stats,
+          recentWeightEntries: weightEntries,
+          recentWorkouts: workouts,
+          achievements
+        };
+      }),
+      catchError(() => of(this.dashboard()))         
+    );
+  }
+
+  logWeight(weight: number, notes?: string): Observable<ApiResponse<any>> {
     const today = new Date().toISOString().split('T')[0];
-    const newEntry: WeightEntry = {
-      id: 'w_' + Date.now(),
+    const payload: BackendLogWeightRequest = {
       weight,
       date: today,
       notes: notes || 'Daily check-in'
     };
 
-    this.weightHistorySignal.update(entries => [...entries, newEntry]);
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/weight`, payload)
+      .pipe(
+        tap(res => {
+          if(res.isSuccess) {
+            const newEntry : WeightEntry ={
+              id: 'w_' + Date.now(),
+              weight,
+              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              notes: notes || 'Daily check-in'
+            };
+            this.weightHistorySignal.update(entries => [newEntry, ...entries]);
 
-    // Recalculate weight lost based on first and newest entry
-    const entries = this.weightHistorySignal();
-    if (entries.length > 1) {
-      const lost = Math.round((entries[0].weight - weight) * 10) / 10;
-      this.statsSignal.update(s => ({ ...s, weightLostKg: Math.max(0, lost) }));
-    }
-
-    return {
-      isSuccess: true,
-      message: 'Weight logged successfully.',
-      data: newEntry,
-      statusCode: 201,
-      timestamp: new Date().toISOString()
-    };
+            const entries = this.weightHistorySignal();
+            if (entries.length > 1){
+              const lost = Math.round((entries[entries.length - 1].weight - weight) * 10) / 10;
+              this.statsSignal.update(s => ({...s, weightLostKg: Math.max(0, lost)}));
+            }
+          }
+        })
+      );
   }
 
-  logWorkoutCompletion(completion: WorkoutCompletionRequest, workoutName: string): ApiResponse<boolean> {
-    this.statsSignal.update(s => ({
-      ...s,
-      totalWorkouts: s.totalWorkouts + 1,
-      totalCaloriesBurned: s.totalCaloriesBurned + completion.caloriesBurned,
-      totalMinutesTrained: s.totalMinutesTrained + completion.durationInMinutes
-    }));
-
-    this.recentWorkoutsSignal.update(list => [
-      {
-        workoutId: completion.workoutId,
-        name: workoutName,
-        completedAt: 'Just now',
-        durationMinutes: completion.durationInMinutes,
-        caloriesBurned: completion.caloriesBurned
-      },
-      ...list
-    ]);
-
-    return {
-      isSuccess: true,
-      message: 'Workout completion recorded successfully.',
-      data: true,
-      statusCode: 201,
-      timestamp: new Date().toISOString()
+  logWorkoutCompletion(completion: WorkoutCompletionRequest, workoutName: string): Observable<ApiResponse<WorkOutCompletionResponse>> {
+    const payload: BackendWorkoutCompletionRequest = {
+      workoutId: completion.workoutId,
+      sessionId: completion.sessionId || `sess_${Date.now()}`,
+      durationInMinutes: completion.durationInMinutes,
+      caloriesBurned: completion.caloriesBurned,
+      rating: completion.rating ?? 5,
+      notes: completion.notes || 'Workout completed successfully',
+      exercisesCompleted: []
     };
+    return this.http.post<ApiResponse<WorkOutCompletionResponse>>(`${this.apiUrl}/workouts`, payload).pipe(
+      tap(res => {
+        // Optimistically update live statistics
+        this.statsSignal.update(s => ({
+          ...s,
+          totalWorkouts: s.totalWorkouts + 1,
+          totalCaloriesBurned: s.totalCaloriesBurned + completion.caloriesBurned,
+          totalMinutesTrained: s.totalMinutesTrained + completion.durationInMinutes,
+          currentStreakDays: res.data?.currentStreak ?? (s.currentStreakDays + 1)
+        }));
+        this.recentWorkoutsSignal.update(list => [
+          {
+            workoutId: completion.workoutId,
+            name: workoutName,
+            completedAt: 'Just now',
+            durationMinutes: completion.durationInMinutes,
+            caloriesBurned: completion.caloriesBurned
+          },
+          ...list
+        ]);
+      })
+    );
+  }
+
+    private mapAchievementIcon(name: string): string {
+    const n = (name || '').toLowerCase();
+    if (n.includes('streak') || n.includes('week') || n.includes('day')) return 'trophy';
+    if (n.includes('calorie') || n.includes('burn')) return 'fire';
+    if (n.includes('water') || n.includes('hydration')) return 'droplet';
+    if (n.includes('strength') || n.includes('weight') || n.includes('reps')) return 'dumbbell';
+    return 'zap';
   }
 }
