@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { ActivityLevel, AssignFitnessPlanResponse, CalculateMetricsResponse, FitnessGoal, FitnessMetrics, Gender, SubmitFitnessStatsRequest, SubmitFitnessStatsResponse } from '../models/fce.models';
+import { ActivityLevel, AssignFitnessPlanResponse, CalculateMetricsResponse, FitnessGoal, FitnessMetrics, Gender, normalizeActivityLevel, normalizeFitnessGoal, SubmitFitnessStatsRequest, SubmitFitnessStatsResponse } from '../models/fce.models';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
@@ -21,9 +21,15 @@ export class FceService {
   submitFitnessStats(stats: SubmitFitnessStatsRequest):
    Observable<ApiResponse<SubmitFitnessStatsResponse>>{
     const userId = stats.userId || this.authService.currentUser()?.id;
+    const payload: SubmitFitnessStatsRequest = {
+      ...stats,
+      goal: normalizeFitnessGoal(stats.goal),
+      activityLevel: normalizeActivityLevel(stats.activityLevel),
+      userId
+    }
     return this.http.post<ApiResponse<SubmitFitnessStatsResponse>>(
       `${this.apiUrl}/weight-goal-activity`,
-      {...stats, userId}
+      payload
     );
    }
 

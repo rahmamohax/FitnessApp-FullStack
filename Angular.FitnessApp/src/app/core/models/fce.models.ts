@@ -76,3 +76,42 @@ export interface FitnessMetrics {
   bmi: number;
   bmiCategory: string;
 }
+
+export function normalizeFitnessGoal(goal: any): FitnessGoal {
+  if (!goal) return FitnessGoal.None;
+  const str = goal.toString().toLowerCase().replace(/[\s_-]+/g, '');
+  switch (str) {
+    case 'loseweight':
+      return FitnessGoal.LoseWeight; // 'Lose Weight'
+    case 'getfitter':
+      return FitnessGoal.GetFitter; // 'Get Fitter'
+    case 'gainweight':
+      return FitnessGoal.GainWeight; // 'Gain Weight'
+    case 'gainmoreflexible':
+      return FitnessGoal.GainMoreFlexible; // 'Gain More Flexible'
+    case 'learnthebasic':
+      return FitnessGoal.LearnTheBasic; // 'Learn the Basic'
+    default:
+      return FitnessGoal.None;
+  }
+}
+
+export function normalizeActivityLevel(activity: any): ActivityLevel {
+  if (!activity) return ActivityLevel.None;
+  const str = activity.toString().toLowerCase().replace(/[\s_-]+/g, '');
+  switch (str) {
+    case 'rookie':
+      return ActivityLevel.Rookie;
+    case 'beginner':
+      return ActivityLevel.Beginner;
+    case 'intermediate':
+      return ActivityLevel.Intermediate;
+    case 'advance':
+    case 'advanced':
+      return ActivityLevel.Advance;
+    case 'truebeast':
+      return ActivityLevel.TrueBeast;
+    default:
+      return ActivityLevel.None;
+  }
+}
