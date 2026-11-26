@@ -1,186 +1,32 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { DailyNutritionSummary, Meal, MealPlan, MealType } from '../models/nutrition.models';
+import { DailyNutritionSummary, GetMealRecommendationsResponse, Meal, MealDetailsResponse, MealPlan, MealPlansResponse, MealType } from '../models/nutrition.models';
 import { ProfileService } from './profile.service';
 import { ApiResponse } from '../models/api-response.model';
+import { environment } from '../../../environments/environment';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { catchError, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NutritionService {
+  private apiUrl = `${environment.apiUrl}/nutrition`;
+  private http = inject(HttpClient);
   private profileService = inject(ProfileService);
 
-  private mealsSignal = signal<Meal[]>([
-    {
-      mealId: 1,
-      name: 'Avocado Toast with Poached Eggs & Chia',
-      type: MealType.Breakfast,
-      calories: 420,
-      protein: 24,
-      carbs: 38,
-      fat: 18,
-      imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80',
-      prepTimeMinutes: 15,
-      ingredients: [
-        '2 slices whole grain sourdough bread',
-        '2 organic pasture-raised eggs',
-        '1/2 ripe avocado mashed with lime',
-        '1 tsp black chia seeds',
-        'Pinch of red pepper flakes and sea salt'
-      ],
-      instructions: [
-        'Toast the sourdough bread slices until golden crisp.',
-        'Poach eggs in simmering water with a drop of vinegar for 3 minutes.',
-        'Spread fresh avocado evenly across the warm toasts.',
-        'Place poached eggs gently on top, sprinkle with chia and red chili flakes.'
-      ],
-      tags: ['High Protein', 'Healthy Fats', 'Quick Prep']
-    },
-    {
-      mealId: 2,
-      name: 'High-Protein Greek Yogurt Parfait',
-      type: MealType.Breakfast,
-      calories: 340,
-      protein: 30,
-      carbs: 42,
-      fat: 6,
-      imageUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=80',
-      prepTimeMinutes: 5,
-      ingredients: [
-        '250g 0% fat Greek Yogurt',
-        '50g mixed fresh blueberries & raspberries',
-        '30g homemade rolled oats granola',
-        '1 scoop vanilla whey isolate',
-        '1 tsp raw organic honey'
-      ],
-      instructions: [
-        'Whisk vanilla protein isolate into Greek yogurt until smooth.',
-        'Layer half the yogurt in a glass, top with mixed berries and granola.',
-        'Add remaining yogurt and finish with honey drizzle.'
-      ],
-      tags: ['Low Fat', '30g Protein', 'Antioxidants']
-    },
-    {
-      mealId: 3,
-      name: 'Grilled Herb Chicken & Quinoa Harvest Bowl',
-      type: MealType.Lunch,
-      calories: 540,
-      protein: 48,
-      carbs: 52,
-      fat: 14,
-      imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
-      prepTimeMinutes: 25,
-      ingredients: [
-        '180g lean chicken breast, marinated in rosemary & garlic',
-        '1 cup cooked tricolor quinoa',
-        '1 cup roasted broccoli florets & bell peppers',
-        '1 tbsp lemon tahini dressing',
-        'Fresh chopped parsley'
-      ],
-      instructions: [
-        'Grill seasoned chicken breast for 6-7 minutes per side until 165°F internal temperature.',
-        'Warm the fluffy quinoa and place at base of bowl.',
-        'Arrange sliced grilled chicken and roasted vegetables alongside.',
-        'Drizzle with lemon tahini dressing and fresh parsley.'
-      ],
-      tags: ['Lean Muscle', 'Complex Carbs', 'Gluten Free']
-    },
-    {
-      mealId: 4,
-      name: 'Wild Salmon Fillet with Asparagus & Sweet Potato',
-      type: MealType.Dinner,
-      calories: 580,
-      protein: 44,
-      carbs: 46,
-      fat: 22,
-      imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
-      prepTimeMinutes: 30,
-      ingredients: [
-        '200g wild Atlantic salmon fillet',
-        '1 medium baked sweet potato with cinnamon',
-        '150g grilled green asparagus spears',
-        '1 tbsp extra virgin olive oil',
-        'Lemon wedge and dill'
-      ],
-      instructions: [
-        'Preheat oven to 400°F (200°C).',
-        'Season salmon and asparagus with olive oil, salt, pepper, and fresh dill.',
-        'Roast salmon and asparagus for 14-16 minutes until salmon flakes tenderly.',
-        'Serve with split baked sweet potato and lemon wedge.'
-      ],
-      tags: ['Omega-3 Rich', 'Cardio Health', 'Clean Dinner']
-    },
-    {
-      mealId: 5,
-      name: 'Whey Protein Berry Power Shake',
-      type: MealType.Snack,
-      calories: 260,
-      protein: 28,
-      carbs: 26,
-      fat: 4,
-      imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80',
-      prepTimeMinutes: 3,
-      ingredients: [
-        '1 scoop chocolate or vanilla whey isolate',
-        '1 cup unsweetened almond milk',
-        '1/2 frozen banana',
-        '1/2 cup frozen dark berries',
-        '1 tbsp ground flaxseeds'
-      ],
-      instructions: [
-        'Add all ingredients into high-speed blender.',
-        'Blend on high for 45 seconds until frosty and smooth.',
-        'Drink immediately post-workout.'
-      ],
-      tags: ['Post-Workout', 'Rapid Recovery', 'Quick Prep']
-    }
-  ]);
+  private readonly defaultMealImages: Record<string, string> = {
+    breakfast: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80',
+    lunch: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
+    dinner: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
+    snack: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80',
+  };
 
-  private dailyTrackerSignal = signal<DailyNutritionSummary>({
-    calorieTarget: 2250,
-    caloriesConsumed: 1240,
-    proteinTarget: 160,
-    proteinConsumed: 96,
-    carbsTarget: 220,
-    carbsConsumed: 132,
-    fatTarget: 65,
-    fatConsumed: 38,
-    waterTargetMl: 3000,
-    waterConsumedMl: 2250,
-    loggedMeals: [
-      {
-        mealId: 1,
-        name: 'Avocado Toast with Poached Eggs & Chia',
-        type: MealType.Breakfast,
-        calories: 420,
-        protein: 24,
-        carbs: 38,
-        fat: 18,
-        loggedAt: '08:30 AM'
-      },
-      {
-        mealId: 3,
-        name: 'Grilled Herb Chicken & Quinoa Harvest Bowl',
-        type: MealType.Lunch,
-        calories: 540,
-        protein: 48,
-        carbs: 52,
-        fat: 14,
-        loggedAt: '01:15 PM'
-      },
-      {
-        mealId: 5,
-        name: 'Whey Protein Berry Power Shake',
-        type: MealType.Snack,
-        calories: 260,
-        protein: 28,
-        carbs: 26,
-        fat: 4,
-        loggedAt: '04:30 PM'
-      }
-    ]
-  });
+  private mealsSignal = signal<Meal[]>([]);
+  private mealPlansSignal = signal<MealPlansResponse[]>([]);
+  private dailyTrackerSignal = signal<DailyNutritionSummary>(this.getInitalDailyTracker());
 
   readonly meals = this.mealsSignal.asReadonly();
+  readonly mealPlans = this.mealPlansSignal.asReadonly();
   readonly dailyTracker = this.dailyTrackerSignal.asReadonly();
 
   readonly remainingCalories = computed(() => {
@@ -188,8 +34,200 @@ export class NutritionService {
     return Math.max(0, t.calorieTarget - t.caloriesConsumed);
   });
 
+  constructor() {
+    // Automatically seed initial recommended meals and plans from backend microservices
+    if (typeof window !== 'undefined') {
+      this.fetchMealRecommendations().subscribe();
+      this.fetchMealPlans().subscribe();
+    }
+  }
+
+  private getTodayKey(): string {
+    const today = new Date().toISOString().split('T')[0];
+    return `super_fitness_nutrition_${today}`;
+  }
+
+  getInitalDailyTracker(): DailyNutritionSummary {
+    const calorieTarget = this.profileService.profile()?.metrics?.calorieTarget || 2200;
+    const proteinTarget = Math.round((calorieTarget * 0.3) / 4);
+    const carbsTarget = Math.round((calorieTarget * 0.45) / 4);
+    const fatTarget = Math.round((calorieTarget * 0.25) / 9);
+
+    const baseTracker: DailyNutritionSummary = {  
+      calorieTarget,
+      caloriesConsumed: 0,
+      proteinTarget,
+      proteinConsumed: 0,
+      carbsTarget,
+      carbsConsumed: 0,
+      fatTarget,
+      fatConsumed: 0,
+      waterTargetMl: 3000,
+      waterConsumedMl: 0,
+      loggedMeals: []
+    };
+
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = localStorage.getItem(this.getTodayKey());
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return {
+            ...baseTracker,
+            ...parsed,
+            calorieTarget: baseTracker.calorieTarget,
+            proteinTarget: baseTracker.proteinTarget,
+            carbsTarget: baseTracker.carbsTarget,
+            fatTarget: baseTracker.fatTarget
+          };
+        } catch {}
+      }
+    }
+
+    return baseTracker;
+  }
+
+  private persistDailyTracker(tracker: DailyNutritionSummary): void {
+    this.dailyTrackerSignal.set(tracker);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(this.getTodayKey(), JSON.stringify(tracker));
+    }
+  }
+
+    fetchMealRecommendations(filterParams?: {
+    mealType?: MealType | string;
+    maxCalories?: number;
+    minProtein?: number;
+    page?: number;
+    pageSize?: number;
+  }): Observable<Meal[]> {
+    let params = new HttpParams()
+      .set('Page', (filterParams?.page ?? 1).toString())
+      .set('PageSize', (filterParams?.pageSize ?? 20).toString());
+
+    if (filterParams?.mealType && filterParams.mealType !== 'all') {
+      params = params.set('MealType', filterParams.mealType);
+    }
+    if (filterParams?.maxCalories) {
+      params = params.set('MaxCalories', filterParams.maxCalories.toString());
+    }
+    if (filterParams?.minProtein) {
+      params = params.set('MinProtein', filterParams.minProtein.toString());
+    }
+    return this.http.get<ApiResponse<GetMealRecommendationsResponse>>(`${this.apiUrl}/recommendations`, { params }).pipe(
+      map(res => {
+        const d = res.data;
+        if (!d?.recommendedMeals?.items || d.recommendedMeals.items.length === 0) {
+          return this.mealsSignal();
+        }
+        // Calibrate daily goal calorie target if returned from backend
+        if (d.userDailyGoalCalories > 0) {
+          const current = this.dailyTrackerSignal();
+          if (current.calorieTarget !== d.userDailyGoalCalories) {
+            const cal = Math.round(d.userDailyGoalCalories);
+            this.persistDailyTracker({
+              ...current,
+              calorieTarget: cal,
+              proteinTarget: Math.round((cal * 0.3) / 4),
+              carbsTarget: Math.round((cal * 0.45) / 4),
+              fatTarget: Math.round((cal * 0.25) / 9)
+            });
+          }
+        }
+        const mapped: Meal[] = d.recommendedMeals.items.map(item => {
+          const typeKey = (item.type || '').toLowerCase();
+          let tags: string[] = [];
+          if (item.tagsJson) {
+            try {
+              tags = JSON.parse(item.tagsJson);
+            } catch {
+              tags = [item.type];
+            }
+          }
+          return {
+            mealId: item.mealId,
+            name: item.name,
+            type: item.type,
+            calories: Math.round(item.calories),
+            protein: Math.round(item.protein),
+            carbs: Math.round(item.carbs),
+            fat: Math.round(item.fats),
+            imageUrl: this.defaultMealImages[typeKey] || this.defaultMealImages['lunch'],
+            prepTimeMinutes: 15,
+            tags: tags.length > 0 ? tags : [item.type, `${Math.round(item.protein)}g Protein`]
+          };
+        });
+        this.mealsSignal.set(mapped);
+        return mapped;
+      }),
+      catchError(() => of(this.mealsSignal()))
+    );
+  }
+  
+    fetchMealDetails(id: number): Observable<Meal> {
+    return this.http.get<ApiResponse<MealDetailsResponse>>(`${this.apiUrl}/meals/${id}`).pipe(
+      map(res => {
+        const d = res.data;
+        if (!d) throw new Error('Meal not found');
+        const typeKey = (d.type || '').toString().toLowerCase();
+        const parseArray = (val: any): string[] => {
+          if (!val) return [];
+          if (Array.isArray(val)) return val.map(v => typeof v === 'string' ? v : JSON.stringify(v));
+          if (typeof val === 'string') {
+            try {
+              const p = JSON.parse(val);
+              if (Array.isArray(p)) return p;
+            } catch {}
+            return [val];
+          }
+          return [];
+        };
+        const existing = this.mealsSignal().find(m => m.mealId === id);
+        const details: Meal = {
+          mealId: id,
+          name: d.name,
+          type: d.type.toString(),
+          calories: Math.round(d.calories),
+          protein: Math.round(d.protein),
+          carbs: Math.round(d.carbs),
+          fat: Math.round(d.fats),
+          imageUrl: existing?.imageUrl || this.defaultMealImages[typeKey] || this.defaultMealImages['lunch'],
+          prepTimeMinutes: existing?.prepTimeMinutes || 20,
+          ingredients: parseArray(d.ingredients),
+          instructions: parseArray(d.instructions),
+          tags: parseArray(d.tags)
+        };
+        // Cache into signal
+        this.mealsSignal.update(list => {
+          const idx = list.findIndex(m => m.mealId === id);
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...details };
+            return [...list];
+          }
+          return [...list, details];
+        });
+        return details;
+      }),
+      catchError(() => {
+        const fallback = this.getMealById(id);
+        return of(fallback as Meal);
+      })
+    );
+  }
+
+  fetchMealPlans(): Observable<MealPlansResponse[]> {
+    return this.http.get<ApiResponse<MealPlansResponse[]>>(`${this.apiUrl}/meal-plans`).pipe(
+      map(res => {
+        const items = res.data || [];
+        this.mealPlansSignal.set(items);
+        return items;
+      }),
+      catchError(() => of(this.mealPlansSignal()))
+    );
+  }
+
   getMealsByType(type: MealType | string): Meal[] {
-    if (type.toLowerCase() === 'all') return this.mealsSignal();
+    if (!type || type.toLowerCase() === 'all') return this.mealsSignal();
     return this.mealsSignal().filter(m => m.type.toLowerCase() === type.toLowerCase());
   }
 
@@ -201,7 +239,6 @@ export class NutritionService {
     const current = this.dailyTrackerSignal();
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     const updated: DailyNutritionSummary = {
       ...current,
       caloriesConsumed: current.caloriesConsumed + meal.calories,
@@ -209,16 +246,14 @@ export class NutritionService {
       carbsConsumed: current.carbsConsumed + meal.carbs,
       fatConsumed: current.fatConsumed + meal.fat,
       loggedMeals: [
-        ...current.loggedMeals,
         {
           ...meal,
           loggedAt: timeString
-        }
+        },
+        ...current.loggedMeals
       ]
     };
-
-    this.dailyTrackerSignal.set(updated);
-
+    this.persistDailyTracker(updated);
     return {
       isSuccess: true,
       message: `${meal.name} logged successfully to daily intake!`,
@@ -230,9 +265,10 @@ export class NutritionService {
 
   addWater(amountMl: number = 250): void {
     const current = this.dailyTrackerSignal();
-    this.dailyTrackerSignal.set({
+    const updated: DailyNutritionSummary = {
       ...current,
       waterConsumedMl: current.waterConsumedMl + amountMl
-    });
+    };
+    this.persistDailyTracker(updated);
   }
 }
